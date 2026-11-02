@@ -1,0 +1,14 @@
+<% const active = typeof navActive === 'string' ? navActive : 'beranda'; %>
+<nav class="mc-app-nav mc-app-nav--official" aria-label="Navigasi utama">
+  <ul class="mc-nav-menu">
+    <li><a href="<%= baseUrl %>/" class="<%= active === 'beranda' ? 'active' : '' %>" <% if (active === 'beranda') { %>aria-current="page"<% } %>>Beranda</a></li>
+    <li><a href="<%= baseUrl %>/berita" class="<%= active === 'berita' ? 'active' : '' %>" <% if (active === 'berita') { %>aria-current="page"<% } %>>Berita</a></li>
+    <li><a href="<%= baseUrl %>/tentang" class="<%= active === 'tentang' ? 'active' : '' %>" <% if (active === 'tentang') { %>aria-current="page"<% } %>>Tentang</a></li>
+    <li><a href="https://www.hstkab.go.id/" target="_blank" rel="noopener noreferrer">Portal HST ↗</a></li>
+  </ul>
+
+  <form class="mc-nav-search" method="get" action="<%= baseUrl %>/berita" role="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+    <input type="search" name="q" value="<%= typeof q === 'string' ? q : '' %>" maxlength="100" placeholder="Cari berita daerah..." aria-label="Cari berita" />
+  </form>
+</nav>

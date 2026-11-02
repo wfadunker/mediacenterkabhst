@@ -1,0 +1,35 @@
+
+# Environment dan rahasia
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Deployment lokal
+.vercel/
+.netlify/
+
+# Log
+*.log
+npm-debug.log*
+
+# File sementara
+tmp/
+temp/
+.cache/
+
+# File editor dan sistem
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Backup lokal
+*.bak
+*.backup
+
+# Data runtime lokal (jangan commit database JSON)
+data/*.json
+!data/.gitkeep

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#0B2E4F">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Login Administrator | Media Center HST</title>
+  <link rel="icon" type="image/png" href="<%= baseUrl %>/assets/img/favicon-hst.png">
+  <link rel="stylesheet" href="<%= baseUrl %>/assets/css/admin.css?v=20261102">
+</head>
+<body class="admin-login-page">
+  <main class="admin-login-card">
+    <header class="admin-login-brand">
+      <img
+        src="<%= baseUrl %>/assets/img/logo-hst.png"
+        alt="Logo Kabupaten Hulu Sungai Tengah"
+        width="48"
+        height="48"
+        decoding="async"
+      >
+      <div>
+        <p class="admin-login-eyebrow">Pemerintah Kabupaten</p>
+        <p class="admin-login-brand-name">Media Center HST</p>
+      </div>
+    </header>
+
+    <section class="admin-login-intro" aria-labelledby="admin-login-title">
+      <h1 id="admin-login-title">Login Administrator</h1>
+      <p>Masuk untuk mengelola konten berita Media Center.</p>
+    </section>
+
+    <% if (error) { %>
+      <div class="admin-login-alert" role="alert" aria-live="polite">
+        <%= error %>
+      </div>
+    <% } %>
+
+    <form method="post" class="admin-login-form" autocomplete="on">
+      <input type="hidden" name="csrf_token" value="<%= csrfToken %>">
+
+      <div class="admin-login-field">
+        <label for="username">Username</label>
+        <input
+          id="username"
+          type="text"
+          name="username"
+          required
+          maxlength="100"
+          autocomplete="username"
+          autocapitalize="none"
+          spellcheck="false"
+          autofocus
+        >
+      </div>
+
+      <div class="admin-login-field">
+        <label for="password">Password</label>
+        <input
+          id="password"
+          type="password"
+          name="password"
+          required
+          autocomplete="current-password"
+        >
+      </div>
+
+      <button type="submit" class="admin-login-submit">Masuk</button>
+    </form>
+
+    <footer class="admin-login-footer">
+      <a href="<%= baseUrl %>/">← Kembali ke website</a>
+      <p>Media Center · Pemerintah Kabupaten Hulu Sungai Tengah</p>
+    </footer>
+  </main>
+</body>
+</html>

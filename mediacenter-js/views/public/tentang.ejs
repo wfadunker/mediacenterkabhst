@@ -1,0 +1,823 @@
+<%- include('../partials/header') %>
+
+<%- include('../partials/public-top') %>
+
+<!-- Tampilan foto hanya berlaku untuk halaman Tentang. Tidak memengaruhi admin/beranda. -->
+<main id="konten-utama" class="mc-page about-page">
+
+    <!-- =====================================================
+
+         HERO
+
+    ====================================================== -->
+
+    <section class="gov-about-hero">
+
+        <div class="gov-about-shell">
+
+            <nav
+
+                class="mc-breadcrumb"
+
+                aria-label="Breadcrumb"
+
+            >
+
+                <a href="<%= baseUrl %>/">
+
+                    Beranda
+
+                </a>
+
+                <span aria-hidden="true">
+
+                    /
+
+                </span>
+
+                <span aria-current="page">
+
+                    Tentang
+
+                </span>
+
+            </nav>
+
+            <div class="hst-about-hero-grid">
+                <div class="gov-about-hero-content">
+
+                <p class="gov-about-kicker">
+
+                    Media Center Kabupaten Hulu Sungai Tengah
+
+                </p>
+
+                <h1>
+
+                    Informasi pemerintah
+
+                    yang lebih mudah diakses masyarakat
+
+                </h1>
+
+                <p class="gov-about-lead">
+
+                    Media Center hadir sebagai kanal
+
+                    informasi publik Pemerintah Kabupaten
+
+                    Hulu Sungai Tengah untuk menyampaikan
+
+                    berita, pelayanan, program, serta
+
+                    perkembangan daerah secara jelas
+
+                    dan terstruktur.
+
+                </p>
+
+                <div class="gov-about-actions">
+
+                    <a
+
+                        href="<%= baseUrl %>/berita"
+
+                        class="mc-btn-primary"
+
+                    >
+
+                        Lihat Berita Terbaru
+
+                        <span aria-hidden="true">
+
+                            →
+
+                        </span>
+
+                    </a>
+
+                    <a
+
+                        href="#profil"
+
+                        class="gov-about-secondary"
+
+                    >
+
+                        Mengenal Media Center
+
+                    </a>
+
+                </div>
+
+            </div>
+                <figure class="hst-about-hero-photo">
+                    <img
+                        src="<%= baseUrl %>/assets/img/kantor-bupati-hst.webp"
+                        alt="Tampak depan Kantor Bupati Hulu Sungai Tengah"
+                        width="1600"
+                        height="1200"
+                        fetchpriority="high"
+                        decoding="async"
+                    >
+                    <figcaption>
+                        <span class="hst-about-caption-dot" aria-hidden="true"></span>
+                        Kantor Bupati Hulu Sungai Tengah
+                    </figcaption>
+                </figure>
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- =====================================================
+
+         PROFILE
+
+    ====================================================== -->
+
+    <section
+
+        class="gov-about-section"
+
+        id="profil"
+
+    >
+
+        <div class="gov-about-profile">
+
+            <div class="gov-about-section-label">
+
+                <span>
+
+                    01
+
+                </span>
+
+                <p>
+
+                    Tentang Kami
+
+                </p>
+
+            </div>
+
+            <div class="gov-about-copy">
+
+                <h2>
+
+                    <%= settings.about_title %>
+
+                </h2>
+
+                <p class="gov-about-intro">
+
+                    <%- escapeHtml(settings.about_description).replace(/\r?\n/g,'<br>') %>
+
+                </p>
+
+                <p>
+
+                    Melalui Media Center, masyarakat
+
+                    dapat mengikuti informasi mengenai
+
+                    kegiatan pemerintahan, pelayanan publik,
+
+                    pendidikan, sosial, pembangunan,
+
+                    serta agenda daerah lainnya.
+
+                </p>
+
+                <p>
+
+                    Informasi disusun agar dapat
+
+                    ditemukan dengan cepat melalui
+
+                    pencarian, kategori berita,
+
+                    dan arsip publikasi.
+
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- DOKUMENTASI PEMERINTAHAN -->
+    <section class="hst-about-documentation" aria-labelledby="hst-about-documentation-title">
+        <div class="hst-about-documentation-inner">
+            <figure class="hst-about-event-photo">
+                <img
+                    src="<%= baseUrl %>/assets/img/kegiatan-pemerintahan-hst.webp"
+                    alt="Dokumentasi kegiatan resmi pemerintahan, seorang pejabat menyampaikan sambutan di podium"
+                    width="1279"
+                    height="932"
+                    loading="lazy"
+                    decoding="async"
+                >
+                <figcaption>Dokumentasi kegiatan pemerintahan Kabupaten Hulu Sungai Tengah</figcaption>
+            </figure>
+            <div class="hst-about-documentation-copy">
+                <p class="hst-about-label">DOKUMENTASI DAERAH</p>
+                <h2 id="hst-about-documentation-title">Aktivitas pemerintahan dan informasi untuk masyarakat</h2>
+                <p>Melalui publikasi kegiatan daerah, Media Center membantu masyarakat mengikuti informasi pemerintahan, agenda publik, serta perkembangan Kabupaten Hulu Sungai Tengah.</p>
+                <a class="hst-about-inline-link" href="<%= baseUrl %>/berita">Jelajahi publikasi daerah <span aria-hidden="true">→</span></a>
+            </div>
+        </div>
+    </section>
+
+    <!-- =====================================================
+
+         ROLE
+
+    ====================================================== -->
+
+    <section class="gov-about-section is-soft">
+
+        <div class="gov-about-shell">
+
+            <header class="gov-about-heading">
+
+                <p class="gov-about-kicker">
+
+                    Peran Media Center
+
+                </p>
+
+                <h2>
+
+                    Mendukung keterbukaan informasi daerah
+
+                </h2>
+
+                <p>
+
+                    Tiga fungsi utama yang menjadi fokus
+
+                    Media Center dalam melayani kebutuhan
+
+                    informasi masyarakat.
+
+                </p>
+
+            </header>
+
+            <div class="gov-about-role-grid">
+
+                <article class="gov-about-role">
+
+                    <div class="gov-about-role-top">
+
+                        <span>
+
+                            01
+
+                        </span>
+
+                        <svg
+
+                            viewBox="0 0 24 24"
+
+                            fill="none"
+
+                            stroke="currentColor"
+
+                            stroke-width="1.7"
+
+                            aria-hidden="true"
+
+                        >
+
+                            <path
+
+                                d="M5 4h14v16H5z"
+
+                            />
+
+                            <path
+
+                                d="M8 8h8M8 12h8M8 16h5"
+
+                            />
+
+                        </svg>
+
+                    </div>
+
+                    <h3>
+
+                        Publikasi Pemerintah
+
+                    </h3>
+
+                    <p>
+
+                        Menyampaikan kegiatan, program,
+
+                        kebijakan, dan perkembangan
+
+                        Pemerintah Kabupaten Hulu
+
+                        Sungai Tengah.
+
+                    </p>
+
+                </article>
+
+                <article class="gov-about-role">
+
+                    <div class="gov-about-role-top">
+
+                        <span>
+
+                            02
+
+                        </span>
+
+                        <svg
+
+                            viewBox="0 0 24 24"
+
+                            fill="none"
+
+                            stroke="currentColor"
+
+                            stroke-width="1.7"
+
+                            aria-hidden="true"
+
+                        >
+
+                            <circle
+
+                                cx="12"
+
+                                cy="12"
+
+                                r="9"
+
+                            />
+
+                            <path
+
+                                d="M12 11v5M12 8h.01"
+
+                            />
+
+                        </svg>
+
+                    </div>
+
+                    <h3>
+
+                        Informasi Publik
+
+                    </h3>
+
+                    <p>
+
+                        Membantu masyarakat memperoleh
+
+                        informasi mengenai layanan,
+
+                        agenda, dan kepentingan
+
+                        publik daerah.
+
+                    </p>
+
+                </article>
+
+                <article class="gov-about-role">
+
+                    <div class="gov-about-role-top">
+
+                        <span>
+
+                            03
+
+                        </span>
+
+                        <svg
+
+                            viewBox="0 0 24 24"
+
+                            fill="none"
+
+                            stroke="currentColor"
+
+                            stroke-width="1.7"
+
+                            aria-hidden="true"
+
+                        >
+
+                            <path
+
+                                d="M4 6h16v13H4z"
+
+                            />
+
+                            <path
+
+                                d="M8 10h8M8 14h5"
+
+                            />
+
+                        </svg>
+
+                    </div>
+
+                    <h3>
+
+                        Arsip Informasi
+
+                    </h3>
+
+                    <p>
+
+                        Menyimpan publikasi pemerintah
+
+                        sehingga masyarakat dapat
+
+                        menelusuri kembali informasi
+
+                        terdahulu.
+
+                    </p>
+
+                </article>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- =====================================================
+
+         INFORMATION ACCESS
+
+    ====================================================== -->
+
+    <section class="gov-about-section">
+
+        <div class="gov-about-access">
+
+            <div class="gov-about-access-intro">
+
+                <p class="gov-about-kicker">
+
+                    Informasi Publik
+
+                </p>
+
+                <h2>
+
+                    Temukan informasi
+
+                    sesuai kebutuhan Anda
+
+                </h2>
+
+                <p>
+
+                    Pilih jenis informasi atau gunakan
+
+                    pencarian untuk menuju publikasi
+
+                    yang relevan.
+
+                </p>
+
+                <a
+
+                    href="<%= baseUrl %>/berita"
+
+                    class="gov-about-text-link"
+
+                >
+
+                    Lihat seluruh arsip berita
+
+                    <span>→</span>
+
+                </a>
+
+            </div>
+
+            <div class="gov-about-links">
+
+                <a
+
+                    href="<%= baseUrl %>/berita?kategori=Pemerintahan"
+
+                >
+
+                    <span>
+
+                        Pemerintahan
+
+                    </span>
+
+                    <p>
+
+                        Program, kebijakan, dan
+
+                        kegiatan pemerintah daerah.
+
+                    </p>
+
+                    <b aria-hidden="true">
+
+                        →
+
+                    </b>
+
+                </a>
+
+                <a
+
+                    href="<%= baseUrl %>/berita?kategori=Pelayanan%20Publik"
+
+                >
+
+                    <span>
+
+                        Pelayanan Publik
+
+                    </span>
+
+                    <p>
+
+                        Informasi layanan pemerintah
+
+                        kepada masyarakat.
+
+                    </p>
+
+                    <b aria-hidden="true">
+
+                        →
+
+                    </b>
+
+                </a>
+
+                <a
+
+                    href="<%= baseUrl %>/berita?kategori=Pendidikan"
+
+                >
+
+                    <span>
+
+                        Pendidikan
+
+                    </span>
+
+                    <p>
+
+                        Informasi kegiatan dan
+
+                        perkembangan pendidikan daerah.
+
+                    </p>
+
+                    <b aria-hidden="true">
+
+                        →
+
+                    </b>
+
+                </a>
+
+                <a
+
+                    href="<%= baseUrl %>/berita?kategori=Sosial"
+
+                >
+
+                    <span>
+
+                        Sosial dan Kemasyarakatan
+
+                    </span>
+
+                    <p>
+
+                        Program sosial dan kegiatan
+
+                        yang berkaitan dengan masyarakat.
+
+                    </p>
+
+                    <b aria-hidden="true">
+
+                        →
+
+                    </b>
+
+                </a>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- =====================================================
+
+         HOW TO USE
+
+    ====================================================== -->
+
+    <section class="gov-about-section is-soft">
+
+        <div class="gov-about-shell">
+
+            <header class="gov-about-heading">
+
+                <p class="gov-about-kicker">
+
+                    Cara Mengakses Informasi
+
+                </p>
+
+                <h2>
+
+                    Cari informasi dengan lebih cepat
+
+                </h2>
+
+            </header>
+
+            <div class="gov-about-steps">
+
+                <article>
+
+                    <span>
+
+                        01
+
+                    </span>
+
+                    <div>
+
+                        <h3>
+
+                            Cari
+
+                        </h3>
+
+                        <p>
+
+                            Masukkan kata kunci melalui
+
+                            kolom pencarian.
+
+                        </p>
+
+                    </div>
+
+                </article>
+
+                <article>
+
+                    <span>
+
+                        02
+
+                    </span>
+
+                    <div>
+
+                        <h3>
+
+                            Saring
+
+                        </h3>
+
+                        <p>
+
+                            Pilih kategori atau tahun
+
+                            publikasi untuk mempersempit hasil.
+
+                        </p>
+
+                    </div>
+
+                </article>
+
+                <article>
+
+                    <span>
+
+                        03
+
+                    </span>
+
+                    <div>
+
+                        <h3>
+
+                            Baca
+
+                        </h3>
+
+                        <p>
+
+                            Buka detail publikasi untuk
+
+                            melihat isi, sumber, dan
+
+                            waktu pembaruan informasi.
+
+                        </p>
+
+                    </div>
+
+                </article>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- =====================================================
+
+         OFFICIAL PORTAL
+
+    ====================================================== -->
+
+    <section class="gov-about-portal">
+
+        <div class="gov-about-portal-inner">
+
+            <div>
+
+                <p class="gov-about-kicker">
+
+                    Portal Pemerintah
+
+                </p>
+
+                <h2>
+
+                    Pemerintah Kabupaten
+
+                    Hulu Sungai Tengah
+
+                </h2>
+
+                <p>
+
+                    Untuk layanan dan informasi
+
+                    pemerintah daerah lainnya,
+
+                    kunjungi portal resmi Pemerintah
+
+                    Kabupaten Hulu Sungai Tengah.
+
+                </p>
+
+            </div>
+
+            <a
+
+                href="<%= portalUrl %>"
+
+                target="_blank"
+
+                rel="noopener noreferrer"
+
+                class="mc-btn-primary"
+
+            >
+
+                Kunjungi Portal Resmi
+
+                <span aria-hidden="true">
+
+                    ↗
+
+                </span>
+
+            </a>
+
+        </div>
+
+    </section>
+
+</main>
+
+<%- include('../partials/footer') %>

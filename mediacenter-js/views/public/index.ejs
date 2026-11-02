@@ -1,0 +1,413 @@
+
+<%- include('../partials/header') %>
+<%- include('../partials/public-top') %>
+
+<%
+  // ==========================================
+  // DATA BERANDA DARI SERVER.JS
+  // ==========================================
+
+  const beritaUtama =
+    typeof utama !== 'undefined' ? utama : null;
+
+  const beritaTerbaru =
+    typeof updates !== 'undefined' && Array.isArray(updates)
+      ? updates
+      : [];
+
+  // ==========================================
+  // KATEGORI INFORMASI
+  // ==========================================
+
+  const kategoriBeranda = [
+    {
+      nomor: '01',
+      nama: 'Pemerintahan',
+      deskripsi: 'Agenda, kebijakan, dan kegiatan daerah.'
+    },
+    {
+      nomor: '02',
+      nama: 'Pelayanan Publik',
+      deskripsi: 'Informasi layanan untuk masyarakat.'
+    },
+    {
+      nomor: '03',
+      nama: 'Pendidikan',
+      deskripsi: 'Program dan kegiatan pendidikan.'
+    },
+    {
+      nomor: '04',
+      nama: 'Sosial',
+      deskripsi: 'Kegiatan sosial dan kemasyarakatan.'
+    }
+  ];
+%>
+
+<main id="konten-utama" class="gov-home" tabindex="-1">
+
+  <!-- ==========================================
+       1. BERITA UTAMA
+  =========================================== -->
+
+  <section
+    class="gov-home-section"
+    aria-labelledby="berita-utama-title">
+
+    <div class="gov-home-shell">
+
+      <div class="gov-home-section-head">
+
+        <div>
+          <p class="gov-home-kicker">
+            Media Center Kabupaten Hulu Sungai Tengah
+          </p>
+
+          <h2 id="berita-utama-title">
+            Sorotan Daerah
+          </h2>
+        </div>
+
+        <a
+          href="<%= baseUrl %>/berita"
+          class="gov-home-link">
+          Lihat semua berita
+          <span aria-hidden="true">→</span>
+        </a>
+
+      </div>
+
+      <% if (beritaUtama) { %>
+
+        <%
+          const featuredUrl = detailUrl(beritaUtama.slug);
+          const featuredImg = gambarUrl(beritaUtama.gambar);
+        %>
+
+        <article class="gov-home-featured">
+
+          <!-- FOTO BERITA UTAMA -->
+
+          <a
+            href="<%= featuredUrl %>"
+            class="gov-home-featured-media"
+            aria-label="Baca berita: <%= beritaUtama.judul %>">
+
+            <% if (featuredImg) { %>
+
+              <img
+                src="<%= featuredImg %>"
+                alt="Dokumentasi: <%= beritaUtama.judul %>"
+                width="900"
+                height="620"
+                fetchpriority="high"
+                decoding="async">
+
+            <% } else { %>
+
+              <%- placeholderHome %>
+
+            <% } %>
+
+          </a>
+
+          <!-- INFORMASI BERITA UTAMA -->
+
+          <div class="gov-home-featured-content">
+
+            <div class="gov-home-meta">
+
+              <span>
+                <%= beritaUtama.kategori || 'Informasi' %>
+              </span>
+
+              <time datetime="<%= dateSql(beritaUtama.tanggal) %>">
+                <%= tanggalBerita(beritaUtama.tanggal) %>
+              </time>
+
+            </div>
+
+            <h2>
+              <a href="<%= featuredUrl %>">
+                <%= beritaUtama.judul %>
+              </a>
+            </h2>
+
+            <p>
+              <%= excerpt(beritaUtama.isi, 180) %>
+            </p>
+
+            <a
+              href="<%= featuredUrl %>"
+              class="gov-home-read">
+              Baca selengkapnya
+              <span aria-hidden="true">→</span>
+            </a>
+
+          </div>
+
+        </article>
+
+      <% } else { %>
+
+        <div class="mc-empty">
+          <strong>Berita utama belum tersedia</strong>
+
+          <p>
+            Publikasi akan ditampilkan setelah administrator
+            menambahkan berita.
+          </p>
+        </div>
+
+      <% } %>
+
+    </div>
+
+  </section>
+
+
+  <!-- ==========================================
+       2. BERITA TERBARU
+  =========================================== -->
+
+  <section
+    class="gov-home-section is-soft"
+    aria-labelledby="berita-terbaru-title">
+
+    <div class="gov-home-shell">
+
+      <div class="gov-home-section-head">
+
+        <div>
+          <p class="gov-home-kicker">
+            Publikasi Terbaru
+          </p>
+
+          <h2 id="berita-terbaru-title">
+            Informasi Daerah
+          </h2>
+        </div>
+
+        <a
+          href="<%= baseUrl %>/berita"
+          class="gov-home-link">
+          Seluruh berita
+          <span aria-hidden="true">→</span>
+        </a>
+
+      </div>
+
+      <% if (beritaTerbaru.length > 0) { %>
+
+        <div class="gov-home-news-grid">
+
+          <% for (const row of beritaTerbaru) { %>
+
+            <%
+              const newsUrl = detailUrl(row.slug);
+              const newsImg = gambarUrl(row.gambar);
+            %>
+
+            <article class="gov-home-card">
+
+              <!-- GAMBAR BERITA -->
+
+              <a
+                href="<%= newsUrl %>"
+                class="gov-home-card-media"
+                aria-label="Baca berita: <%= row.judul %>">
+
+                <% if (newsImg) { %>
+
+                  <img
+                    src="<%= newsImg %>"
+                    alt="Dokumentasi: <%= row.judul %>"
+                    width="640"
+                    height="400"
+                    loading="lazy"
+                    decoding="async">
+
+                <% } else { %>
+
+                  <%- placeholderHome %>
+
+                <% } %>
+
+              </a>
+
+              <!-- KONTEN BERITA -->
+
+              <div class="gov-home-card-body">
+
+                <div class="gov-home-meta">
+
+                  <span>
+                    <%= row.kategori || 'Informasi' %>
+                  </span>
+
+                  <time datetime="<%= dateSql(row.tanggal) %>">
+                    <%= tanggalBerita(row.tanggal) %>
+                  </time>
+
+                </div>
+
+                <h3>
+                  <a href="<%= newsUrl %>">
+                    <%= row.judul %>
+                  </a>
+                </h3>
+
+                <p>
+                  <%= excerpt(row.isi, 110) %>
+                </p>
+
+                <a
+                  href="<%= newsUrl %>"
+                  class="gov-home-card-link">
+                  Baca informasi
+                  <span aria-hidden="true">→</span>
+                </a>
+
+              </div>
+
+            </article>
+
+          <% } %>
+
+        </div>
+
+      <% } else { %>
+
+        <div class="mc-empty">
+          <strong>Belum ada publikasi terbaru</strong>
+
+          <p>
+            Silakan kunjungi kembali setelah ada berita diterbitkan.
+          </p>
+        </div>
+
+      <% } %>
+
+    </div>
+
+  </section>
+
+
+  <!-- ==========================================
+       3. AKSES KATEGORI INFORMASI
+  =========================================== -->
+
+  <section
+    class="gov-home-section"
+    aria-labelledby="akses-title">
+
+    <div class="gov-home-shell gov-home-access-layout">
+
+      <div class="gov-home-access-copy">
+
+        <p class="gov-home-kicker">
+          Akses Informasi
+        </p>
+
+        <h2 id="akses-title">
+          Temukan informasi sesuai kebutuhan
+        </h2>
+
+        <p>
+          Pilih kategori atau gunakan fitur pencarian
+          untuk menemukan informasi daerah.
+        </p>
+
+        <a
+          href="<%= baseUrl %>/berita"
+          class="gov-home-link">
+          Buka arsip berita
+          <span aria-hidden="true">→</span>
+        </a>
+
+      </div>
+
+      <div class="gov-home-access-list">
+
+        <% for (const item of kategoriBeranda) { %>
+
+          <a href="<%= kategoriUrl(item.nama) %>">
+
+            <span>
+              <%= item.nomor %>
+            </span>
+
+            <div>
+
+              <strong>
+                <%= item.nama %>
+              </strong>
+
+              <p>
+                <%= item.deskripsi %>
+              </p>
+
+            </div>
+
+            <b aria-hidden="true">→</b>
+
+          </a>
+
+        <% } %>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- ==========================================
+       4. PORTAL PEMERINTAH DAERAH
+  =========================================== -->
+
+  <section
+    class="gov-home-portal"
+    aria-labelledby="portal-title">
+
+    <div class="gov-home-portal-inner">
+
+      <div>
+
+        <p class="gov-home-kicker">
+          Kanal Pemerintah Daerah
+        </p>
+
+        <h2 id="portal-title">
+          Portal Pemerintah Kabupaten Hulu Sungai Tengah
+        </h2>
+
+        <p>
+          Akses informasi pemerintahan dan layanan publik
+          lainnya melalui portal pemerintah daerah.
+        </p>
+
+      </div>
+
+      <a
+        class="mc-btn-primary"
+        href="https://www.hstkab.go.id/"
+        target="_blank"
+        rel="noopener noreferrer">
+
+        Kunjungi Portal Resmi
+        <span aria-hidden="true">↗</span>
+
+      </a>
+
+    </div>
+
+  </section>
+
+</main>
+
+<!-- ==========================================
+     5. FOOTER DAN ACCESSIBILITY
+     Dipanggil satu kali melalui footer.ejs
+=========================================== -->
+
+<%- include('../partials/footer.ejs') %>

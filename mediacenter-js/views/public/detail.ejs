@@ -1,0 +1,387 @@
+<%- include('../partials/header') %>
+<%- include('../partials/public-top') %>
+<% if (!berita) { %>
+   <main id="konten-utama" class="gov-detail" tabindex="-1">
+        <section class="gov-detail-not-found">
+            <div class="gov-detail-shell">
+                <nav
+                    class="mc-breadcrumb"
+                    aria-label="Breadcrumb"
+                >
+                    <a href="<%= baseUrl %>/">
+                        Beranda
+                    </a>
+                    <span aria-hidden="true">
+                        /
+                    </span>
+                    <a href="<%= baseUrl %>/berita">
+                        Berita
+                    </a>
+                    <span aria-hidden="true">
+                        /
+                    </span>
+                    <span aria-current="page">
+                        Tidak ditemukan
+                    </span>
+                </nav>
+                <div class="gov-detail-empty">
+                    <span>
+                        404
+                    </span>
+                    <h1>
+                        Informasi tidak ditemukan
+                    </h1>
+                    <p>
+                        Halaman yang Anda cari mungkin
+                        telah dipindahkan, tidak lagi tersedia,
+                        atau alamat yang digunakan tidak sesuai.
+                    </p>
+                    <a
+                        href="<%= baseUrl %>/berita"
+                        class="mc-btn-primary"
+                    >
+                        Kembali ke Arsip Berita
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+    <% } else { %>
+<main class="gov-detail">
+    <header class="gov-detail-hero">
+        <div class="gov-detail-title-shell">
+            <nav
+                class="mc-breadcrumb"
+                aria-label="Breadcrumb"
+            >
+                <a href="<%= baseUrl %>/">
+                    Beranda
+                </a>
+                <span aria-hidden="true">
+                    /
+                </span>
+                <a href="<%= baseUrl %>/berita">
+                    Berita
+                </a>
+                <span aria-hidden="true">
+                    /
+                </span>
+                <span aria-current="page">
+                    Detail
+                </span>
+            </nav>
+            <div class="gov-detail-heading-meta">
+                <a
+                    href="<%= kategoriUrl(kategori) %>"
+                >
+                    <%= kategori %>
+                </a>
+                <span aria-hidden="true">
+                    •
+                </span>
+                <time
+                    datetime="<%= dateSql(berita.tanggal) %>"
+                >
+                    <%= publishedText %>
+                </time>
+            </div>
+            <h1>
+                <%= berita.judul %>
+            </h1>
+            <p class="gov-detail-official-label">
+                <span
+                    aria-hidden="true"
+                    class="gov-detail-official-dot"
+                ></span>
+                Publikasi resmi Media Center
+                Kabupaten Hulu Sungai Tengah
+            </p>
+        </div>
+    </header>
+    <article class="gov-detail-article">
+        <div class="gov-detail-layout">
+            <div class="gov-detail-main">
+                <% if (gambar) { %>
+                    <figure class="gov-detail-image">
+                        <img
+                            src="<%= gambar %>"
+                            alt="<%= berita.judul %>"
+                            width="1200"
+                            height="675"
+                            fetchpriority="high"
+                            decoding="async"
+                        >
+                        <figcaption>
+                            Dokumentasi terkait publikasi
+                            Media Center Kabupaten
+                            Hulu Sungai Tengah.
+                        </figcaption>
+                    </figure>
+                <% } %>
+                <div class="gov-detail-body">
+                    <% for (const paragraph of paragraphs) { %>
+                        <% if (!paragraph.trim()) continue %>
+                        <p>
+                            <%= paragraph %>
+                        </p>
+                    <% } %>
+                </div>
+                <footer class="gov-detail-article-footer">
+                    <div>
+                        <span>
+                            Kategori
+                        </span>
+                        <a
+                            href="<%= kategoriUrl(kategori) %>"
+                        >
+                            <%= kategori %>
+                        </a>
+                    </div>
+                    <a
+                        href="<%= baseUrl %>/berita"
+                        class="gov-detail-back"
+                    >
+                        ← Kembali ke semua berita
+                    </a>
+                </footer>
+            </div>
+            <aside
+                class="gov-detail-sidebar"
+                aria-label="Informasi publikasi"
+            >
+                <div class="gov-detail-info-card">
+                    <p class="gov-detail-kicker">
+                        Informasi Publikasi
+                    </p>
+                    <h2>
+                        Detail Informasi
+                    </h2>
+                    <dl class="gov-detail-meta-list">
+                        <div>
+                            <dt>
+                                Diterbitkan
+                            </dt>
+                            <dd>
+                                <%= publishedText %>
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>
+                                Penulis
+                            </dt>
+                            <dd>
+                                <%= penulis %>
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>
+                                Sumber
+                            </dt>
+                            <dd>
+                                <%= sumber %>
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>
+                                Diperbarui
+                            </dt>
+                            <dd>
+                                <%= updatedText %>
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>
+                                Status
+                            </dt>
+                            <dd class="gov-detail-status">
+                                <span
+                                    aria-hidden="true"
+                                ></span>
+                                Publikasi Resmi
+                            </dd>
+                        </div>
+                    </dl>
+                    <div class="gov-detail-actions">
+                        <button
+                            type="button"
+                            id="print-article"
+                        >
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M6 9V4h12v5"
+                                />
+                                <path
+                                    d="M6 18H4V10h16v8h-2"
+                                />
+                                <path
+                                    d="M7 14h10v6H7z"
+                                />
+                            </svg>
+                            <span>
+                                Cetak
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            id="copy-link"
+                        >
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"
+                                />
+                                <path
+                                    d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"
+                                />
+                            </svg>
+                            <span
+                                id="copy-text"
+                                aria-live="polite"
+                            >
+                                Salin Tautan
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            id="share-article"
+                            hidden
+                        >
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                                aria-hidden="true"
+                            >
+                                <circle
+                                    cx="18"
+                                    cy="5"
+                                    r="2.5"
+                                />
+                                <circle
+                                    cx="6"
+                                    cy="12"
+                                    r="2.5"
+                                />
+                                <circle
+                                    cx="18"
+                                    cy="19"
+                                    r="2.5"
+                                />
+                                <path
+                                    d="m8.2 10.8 7.5-4.4M8.2 13.2l7.5 4.4"
+                                />
+                            </svg>
+                            <span>
+                                Bagikan
+                            </span>
+                        </button>
+                    </div>
+                    <a
+                        href="<%= baseUrl %>/berita"
+                        class="gov-detail-all-news"
+                    >
+                        Lihat Arsip Berita
+                        <span aria-hidden="true">
+                            →
+                        </span>
+                    </a>
+                </div>
+            </aside>
+        </div>
+    </article>
+    <% if (relatedItems.length) { %>
+        <section class="gov-detail-related">
+            <div class="gov-detail-shell">
+                <header class="gov-detail-related-head">
+                    <div>
+                        <p class="gov-detail-kicker">
+                            Informasi Lainnya
+                        </p>
+                        <h2>
+                            Berita Terkait
+                        </h2>
+                    </div>
+                    <a
+                        href="<%= kategoriUrl(kategori) %>"
+                    >
+                        Lihat kategori
+                        <%= kategori %>
+                        <span aria-hidden="true">
+                            →
+                        </span>
+                    </a>
+                </header>
+                <div class="gov-detail-related-grid">
+                    <% for (const item of relatedItems) { %>
+                        <% const relatedUrl=detailUrl(item.slug),relatedImg=gambarUrl(item.gambar) %>
+                        <article class="gov-detail-related-card">
+                            <a
+                                href="<%= relatedUrl %>"
+                                class="gov-detail-related-media"
+                                aria-label="<%= item.judul %>"
+                            >
+                                <% if (relatedImg) { %>
+                                    <img
+                                        src="<%= relatedImg %>"
+                                        alt="<%= item.judul %>"
+                                        width="640"
+                                        height="400"
+                                        loading="lazy"
+                                        decoding="async"
+                                    >
+                                <% } else { %>
+                                    <%- placeholderDetail %>
+                                <% } %>
+                            </a>
+                            <div class="gov-detail-related-body">
+                                <div class="gov-detail-related-meta">
+                                    <% if (item.kategori) { %>
+                                        <span>
+                                            <%= item.kategori %>
+                                        </span>
+                                    <% } %>
+                                    <time
+                                        datetime="<%= dateSql(item.tanggal) %>"
+                                    >
+                                        <%= tanggalBerita(item.tanggal) %>
+                                    </time>
+                                </div>
+                                <h3>
+                                    <a
+                                        href="<%= relatedUrl %>"
+                                    >
+                                        <%= item.judul %>
+                                    </a>
+                                </h3>
+                                <a
+                                    href="<%= relatedUrl %>"
+                                    class="gov-detail-related-link"
+                                >
+                                    Baca informasi
+                                    <span aria-hidden="true">
+                                        →
+                                    </span>
+                                </a>
+                            </div>
+                        </article>
+                    <% } %>
+                </div>
+            </div>
+        </section>
+    <% } %>
+</main>
+<% } %>
+
+<%- include('../partials/footer') %>

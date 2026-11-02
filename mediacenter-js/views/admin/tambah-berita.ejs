@@ -1,0 +1,199 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>Tambah Berita - Admin Media Center HST</title>
+    <link rel="stylesheet" href="<%= baseUrl %>/assets/css/admin.css?v=20261102">
+</head>
+<body class="admin-dashboard-page">
+
+<%- include('../partials/sidebar') %>
+
+<main class="admin-main">
+<div class="admin-container">
+
+    <!-- PAGE HEADER -->
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">Pengelolaan Berita</p>
+            <h1>Tambah Berita</h1>
+            <p>Tambahkan informasi baru untuk ditampilkan pada website publik.</p>
+        </div>
+
+        <div class="page-actions">
+            <a href="<%= baseUrl %>/admin/berita" class="btn btn-secondary">← Kembali</a>
+        </div>
+    </header>
+
+    <!-- ERROR -->
+    <% if (errors.length) { %>
+        <div class="error-box" role="alert">
+            <strong>Data belum dapat disimpan.</strong>
+            <% for (const error of errors) { %>
+                <p>• <%= error %></p>
+            <% } %>
+        </div>
+    <% } %>
+
+    <!-- FORM -->
+    <form method="post" enctype="multipart/form-data" class="form-layout">
+        <input type="hidden" name="csrf_token" value="<%= csrfToken %>">
+
+        <!-- KOLOM KIRI -->
+        <div class="form-main">
+
+            <section class="form-card">
+                <div class="form-card-head">
+                    <h2 class="form-card-title">Isi Berita</h2>
+                    <p class="form-card-desc">
+                        Masukkan judul dan isi informasi yang akan ditampilkan kepada masyarakat.
+                    </p>
+                </div>
+
+                <div class="form-group">
+                    <label for="judul" class="form-label">
+                        Judul Berita <span class="required">*</span>
+                    </label>
+                    <input id="judul" type="text" name="judul"
+                           value="<%= data.judul %>"
+                           required autofocus class="form-control"
+                           placeholder="Masukkan judul berita">
+                    <p class="form-help">
+                        Gunakan judul yang jelas dan sesuai dengan isi berita.
+                    </p>
+                </div>
+
+                <div class="form-group">
+                    <label for="isi" class="form-label">
+                        Isi Berita <span class="required">*</span>
+                    </label>
+                    <textarea id="isi" name="isi" required class="form-control"
+                              rows="10"
+                              placeholder="Tuliskan isi berita..."><%= data.isi %></textarea>
+                    <p class="form-help">
+                        Gunakan Enter untuk membuat paragraf baru.
+                    </p>
+                </div>
+            </section>
+
+            <section class="form-card">
+                <div class="form-card-head">
+                    <h2 class="form-card-title">Informasi Publikasi</h2>
+                    <p class="form-card-desc">
+                        Lengkapi informasi pendukung untuk publikasi berita.
+                    </p>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="kategori" class="form-label">
+                            Kategori <span class="required">*</span>
+                        </label>
+                        <input id="kategori" type="text" name="kategori"
+                               list="kategori-list"
+                               value="<%= data.kategori %>"
+                               required class="form-control">
+                        <datalist id="kategori-list">
+                            <option value="Pemerintahan">
+                            <option value="Pelayanan Publik">
+                            <option value="Pendidikan">
+                            <option value="Sosial">
+                            <option value="Keagamaan">
+                            <option value="Informasi">
+                            <option value="Komunikasi">
+                            <option value="Teknologi">
+                            <option value="Agenda">
+                        </datalist>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tanggal" class="form-label">
+                            Tanggal Publikasi <span class="required">*</span>
+                        </label>
+                        <input id="tanggal" type="date" name="tanggal"
+                               value="<%= data.tanggal %>"
+                               required class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="penulis" class="form-label">Penulis</label>
+                        <input id="penulis" type="text" name="penulis"
+                               value="<%= data.penulis %>"
+                               class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sumber" class="form-label">Sumber</label>
+                        <input id="sumber" type="text" name="sumber"
+                               value="<%= data.sumber %>"
+                               class="form-control">
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- SIDEBAR KANAN -->
+        <aside class="form-sidebar">
+
+            <section class="form-card">
+                <div class="form-card-head">
+                    <h2 class="form-card-title">Gambar Berita</h2>
+                    <p class="form-card-desc">
+                        Tambahkan gambar utama yang sesuai dengan berita.
+                    </p>
+                </div>
+
+                <div class="image-preview" id="image-preview-box">
+                    <div id="image-preview-empty" class="image-empty">
+                        Belum ada gambar
+                    </div>
+                    <img id="image-preview" src="" alt="Preview gambar" style="display:none">
+                </div>
+
+                <input id="gambar" type="file" name="gambar"
+                       accept=".jpg,.jpeg,.png,.webp" class="file-input">
+
+                <p class="form-help">
+                    JPG, PNG, atau WebP. Maksimal 2 MB.
+                </p>
+            </section>
+
+            <section class="form-card">
+                <div class="form-card-head">
+                    <h2 class="form-card-title">Publikasi</h2>
+                    <p class="form-card-desc">
+                        Periksa kembali informasi sebelum berita dipublikasikan.
+                    </p>
+                </div>
+
+                <div class="meta-list">
+                    <div class="meta-row">
+                        <span>Status</span>
+                        <strong class="meta-badge">Baru</strong>
+                    </div>
+                    <div class="meta-row">
+                        <span>Penulis</span>
+                        <strong>Media Center HST</strong>
+                    </div>
+                    <div class="meta-row">
+                        <span>Zona Waktu</span>
+                        <strong>WITA</strong>
+                    </div>
+                </div>
+
+                <button type="submit" class="form-submit">
+                    Publikasikan Berita
+                </button>
+            </section>
+
+        </aside>
+    </form>
+
+</div>
+</main>
+</body>
+</html>

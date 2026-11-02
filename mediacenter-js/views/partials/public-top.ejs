@@ -1,0 +1,28 @@
+<!-- HEADER PUBLIK BERSAMA: Beranda, Berita, Tentang. Jangan dipanggil dari admin. -->
+<a href="#konten-utama" class="mc-skip-link">Lewati navigasi</a>
+<%- include('./public-brand') %>
+<section class="hst-common-banner" aria-label="Banner Media Center Kabupaten Hulu Sungai Tengah">
+  <div class="hst-common-banner__frame">
+    <picture>
+      <source media="(max-width:700px)" srcset="<%= baseUrl %>/assets/img/banner-hst-mobile-animasi.svg" type="image/svg+xml">
+      <img src="<%= baseUrl %>/assets/img/banner-hst-panjang-animasi.svg"
+           alt="Media Center Kabupaten Hulu Sungai Tengah, ilustrasi daerah dan pimpinan Pemerintah Kabupaten Hulu Sungai Tengah."
+           width="1920" height="370" decoding="async" fetchpriority="high">
+    </picture>
+  </div>
+</section>
+
+<% const hstTopActive = (typeof navActive === 'string' && navActive) ? navActive : 'beranda'; %>
+<nav class="mc-app-nav mc-app-nav--official hst-common-nav" aria-label="Navigasi utama">
+  <ul class="mc-nav-menu">
+    <li><a href="<%= baseUrl %>/" class="<%= hstTopActive === 'beranda' ? 'active' : '' %>" <% if (hstTopActive === 'beranda') { %>aria-current="page"<% } %>>Beranda</a></li>
+    <li><a href="<%= baseUrl %>/berita" class="<%= hstTopActive === 'berita' ? 'active' : '' %>" <% if (hstTopActive === 'berita') { %>aria-current="page"<% } %>>Berita</a></li>
+    <li><a href="<%= baseUrl %>/tentang" class="<%= hstTopActive === 'tentang' ? 'active' : '' %>" <% if (hstTopActive === 'tentang') { %>aria-current="page"<% } %>>Tentang</a></li>
+    <li><a href="https://www.hstkab.go.id/" target="_blank" rel="noopener noreferrer">Portal HST ↗</a></li>
+  </ul>
+  <form class="mc-nav-search" method="get" action="<%= baseUrl %>/berita" role="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+    <input type="search" name="q" maxlength="100" value="<%= typeof q === 'string' ? q : '' %>" placeholder="Cari berita daerah..." aria-label="Cari berita daerah">
+  </form>
+  <span class="mc-nav-status"><span class="mc-status-dot" aria-hidden="true"></span>Kanal Resmi</span>
+</nav>

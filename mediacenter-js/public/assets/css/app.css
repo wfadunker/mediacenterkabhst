@@ -1,0 +1,30 @@
+/* ========================================
+   NEWS SLIDER
+======================================== */
+
+.mc-news-slider {
+    position: relative;
+}
+
+.mc-news-track {
+    display: flex;
+    gap: 24px;
+
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    scroll-behavior: smooth;
+    scroll-snap-type: x mandatory;
+
+    scrollbar-width: none;
+}
+
+.mc-news-track::-webkit-scrollbar {
+    display: none;
+}
+
+.mc-news-card {
+    flex: 0 0 calc((100% - 48px) / 3);
+
+    scroll-snap-align: start;
+}

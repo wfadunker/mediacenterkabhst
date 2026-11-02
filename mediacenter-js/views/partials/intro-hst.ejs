@@ -1,0 +1,55 @@
+<!--
+  INTRO BERANDA PUBLIK — MEDIA CENTER KABUPATEN HST
+  Tampil saat kunjungan pertama atau refresh Beranda; tidak saat klik Beranda/Back.
+  Menggunakan sessionStorage hanya sebagai penanda navigasi tab; tanpa perubahan server.js.
+  Pasang SATU KALI di header EJS publik, sesudah <body>.
+  Aset: /assets/video/intro-hst.mp4
+        /assets/img/background-hst-enggang.webp
+        /assets/img/logo-hst.png (wajib logo resmi kabupaten)
+-->
+<section id="hst-intro" class="hst-intro" data-base="<%= baseUrl %>"
+  role="dialog" aria-modal="true" aria-labelledby="hst-intro-heading"
+  aria-describedby="hst-intro-desc" hidden>
+
+  <video class="hst-intro__video" muted playsinline preload="none"
+    poster="<%= baseUrl %>/assets/img/background-hst-enggang.webp" aria-hidden="true">
+    <source src="<%= baseUrl %>/assets/video/intro-hst.mp4" type="video/mp4">
+  </video>
+  <div class="hst-intro__overlay" aria-hidden="true"></div>
+
+  <div class="hst-intro__layout">
+    <header class="hst-intro__header">
+      <div class="hst-intro__brand" aria-label="Media Center HST">
+        <span class="hst-intro__brand-mark" aria-hidden="true"></span>
+        <span><strong>MEDIA CENTER</strong><small>HULU SUNGAI TENGAH</small></span>
+      </div>
+      <button type="button" class="hst-intro__skip" data-hst-close>
+        Lewati intro <span aria-hidden="true">↗</span>
+      </button>
+    </header>
+
+    <div class="hst-intro__main">
+      <div class="hst-intro__emblem">
+        <img src="<%= baseUrl %>/assets/img/logo-hst.png"
+          alt="Lambang Kabupaten Hulu Sungai Tengah" width="76" height="76">
+      </div>
+      <p class="hst-intro__eyebrow">PORTAL INFORMASI PEMERINTAH DAERAH</p>
+      <h1 id="hst-intro-heading">Pemerintah Kabupaten<br><span>Hulu Sungai Tengah</span></h1>
+      <p id="hst-intro-desc" class="hst-intro__lead">
+        Informasi, publikasi, dan kabar pembangunan daerah<br class="hst-intro__desktop-break">
+        dalam satu layanan Media Center.
+      </p>
+      <button type="button" class="hst-intro__enter" data-hst-close>
+        Jelajahi Beranda
+        <span class="hst-intro__enter-icon" aria-hidden="true">→</span>
+      </button>
+    </div>
+
+    <footer class="hst-intro__footer">
+      <span>KALIMANTAN SELATAN <span aria-hidden="true">•</span> BUMI MURAKATA</span>
+      <span>MEDIA CENTER HST</span>
+    </footer>
+  </div>
+
+  <div class="hst-intro__progress" aria-hidden="true"><span></span></div>
+</section>

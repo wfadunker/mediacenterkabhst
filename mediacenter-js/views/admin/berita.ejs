@@ -1,0 +1,162 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>Kelola Berita - Admin Media Center HST</title>
+    <link rel="stylesheet" href="<%= baseUrl %>/assets/css/admin.css?v=20261102">
+</head>
+<body class="admin-dashboard-page">
+
+<%- include('../partials/sidebar') %>
+
+<main class="admin-main">
+<div class="admin-container">
+
+    <!-- PAGE HEADER -->
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">Konten</p>
+            <h1>Kelola Berita</h1>
+            <p>Kelola publikasi berita Media Center Hulu Sungai Tengah.</p>
+        </div>
+
+        <div class="page-actions">
+            <a href="<%= baseUrl %>/berita" target="_blank"
+               rel="noopener" class="btn btn-secondary">
+                Lihat Publikasi ↗
+            </a>
+            <a href="<%= baseUrl %>/admin/berita/tambah" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Tambah Berita
+            </a>
+        </div>
+    </header>
+
+    <!-- NOTIFIKASI -->
+    <% if (status) { %>
+        <div class="alert alert-success" role="status">
+            <span aria-hidden="true">✓</span>
+            <% if (status==='created') { %> Berita berhasil ditambahkan.
+            <% } else if (status==='updated') { %> Berita berhasil diperbarui.
+            <% } else if (status==='deleted') { %> Berita berhasil dihapus.
+            <% } %>
+        </div>
+    <% } %>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+        <form method="get" class="search-form">
+            <div class="search-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7"/>
+                    <path d="m21 21-4.3-4.3"/>
+                </svg>
+                <input type="search" name="q" value="<%= q %>"
+                       placeholder="Cari judul, kategori, atau penulis..."
+                       class="search-input">
+            </div>
+
+            <% if (q) { %>
+                <a href="<%= baseUrl %>/admin/berita" class="btn btn-secondary">Reset</a>
+            <% } %>
+        </form>
+
+        <span class="table-muted">
+            <strong><%= numberFormat(total) %></strong> berita
+        </span>
+    </div>
+
+    <!-- TABEL -->
+    <section class="table-card">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Berita</th>
+                    <th>Kategori</th>
+                    <th>Tanggal</th>
+                    <th>Penulis</th>
+                    <th>Update</th>
+                    <th style="text-align:right">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (rows.length) { %>
+                    <% for (const row of rows) { %>
+                        <tr>
+                            <td>
+                                <div class="table-title">
+                                    <%= row.judul %>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="table-category">
+                                    <%= row.kategori %>
+                                </span>
+                            </td>
+                            <td class="table-muted">
+                                <%= tanggalAdmin(row.tanggal) %>
+                            </td>
+                            <td class="table-muted">
+                                <%= row.penulis||'Media Center HST' %>
+                            </td>
+                            <td class="table-muted">
+                                <%= waktuAdmin(row.updated_at) %>
+                            </td>
+                            <td>
+                                <div class="table-actions">
+                                    <a href="<%= baseUrl %>/admin/berita/edit?id=<%= row.id %>"
+                                       class="action-btn primary">Edit</a>
+
+                                    <form method="post" data-confirm-message="Yakin ingin menghapus berita ini?">
+                                        <input type="hidden" name="csrf_token" value="<%= csrfToken %>">
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="id" value="<%= row.id %>">
+                                        <button type="submit" class="action-btn danger">Hapus</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    <% } %>
+                <% } else { %>
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <strong>Berita tidak ditemukan.</strong>
+                            <p>Coba ubah kata kunci atau tambah berita baru.</p>
+                        </td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- PAGINATION -->
+    <% if (totalPages>1) { %>
+        <nav class="pagination" aria-label="Navigasi halaman">
+            <span>
+                Halaman <strong><%= page %></strong> dari <strong><%= totalPages %></strong>
+            </span>
+
+            <div class="pagination-actions">
+                <% if (page>1) { %>
+                    <a href="?<%= new URLSearchParams({q,page:page-1}).toString() %>"
+                       class="btn btn-secondary">← Sebelumnya</a>
+                <% } %>
+
+                <% if (page<totalPages) { %>
+                    <a href="?<%= new URLSearchParams({q,page:page+1}).toString() %>"
+                       class="btn btn-secondary">Berikutnya →</a>
+                <% } %>
+            </div>
+        </nav>
+    <% } %>
+
+</div>
+</main>
+
+</body>
+</html>

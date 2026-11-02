@@ -1,0 +1,308 @@
+
+<!-- MEDIA CENTER HST - ACCESSIBILITY WIDGET -->
+<div class="mc-a11y" data-mc-a11y>
+  <button
+    class="mc-a11y-launcher"
+    type="button"
+    data-a11y-open
+    aria-expanded="false"
+    aria-controls="mc-a11y-panel"
+    aria-label="Buka pusat aksesibilitas">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" />
+      <circle cx="12" cy="7" r="1.4" fill="currentColor" />
+      <path d="M6.8 10.2 12 11.5l5.2-1.3M12 11.5v5.8m0-3.1-3.3 4.1m3.3-4.1 3.3 4.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+    <span>Aksesibilitas</span>
+  </button>
+
+  <section
+    class="mc-a11y-panel"
+    id="mc-a11y-panel"
+    aria-labelledby="mc-a11y-title"
+    aria-hidden="true"
+    hidden>
+
+    <header class="mc-a11y-header">
+      <div class="mc-a11y-brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="12" cy="7" r="1.4" fill="currentColor" />
+          <path d="M6.8 10.2 12 11.5l5.2-1.3M12 11.5v5.8m0-3.1-3.3 4.1m3.3-4.1 3.3 4.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </div>
+
+      <div class="mc-a11y-heading">
+        <span>MEDIA CENTER HST</span>
+        <h2 id="mc-a11y-title">Pusat Aksesibilitas</h2>
+        <p>Sesuaikan pengalaman membaca dan mengakses informasi.</p>
+      </div>
+
+      <button
+        type="button"
+        class="mc-a11y-close"
+        data-a11y-close
+        aria-label="Tutup aksesibilitas">×</button>
+    </header>
+
+    <div class="mc-a11y-content">
+
+      <section class="mc-a11y-section">
+        <h3>Pengaturan Cepat</h3>
+
+        <div class="mc-a11y-presets">
+          <button type="button" data-a11y-preset="vision" aria-pressed="false">
+            <span aria-hidden="true">◉</span>
+            Penglihatan Rendah
+          </button>
+
+          <button type="button" data-a11y-preset="reading" aria-pressed="false">
+            <span aria-hidden="true">Aa</span>
+            Mudah Membaca
+          </button>
+
+          <button type="button" data-a11y-preset="focus" aria-pressed="false">
+            <span aria-hidden="true">◎</span>
+            Mode Fokus
+          </button>
+        </div>
+      </section>
+
+      <section class="mc-a11y-section">
+        <h3>Audio dan Pembaca Teks</h3>
+
+        <p class="mc-a11y-description">
+          Dengarkan informasi pada halaman menggunakan suara.
+        </p>
+
+        <div class="mc-a11y-speech-buttons">
+          <button
+            type="button"
+            class="mc-a11y-primary"
+            data-a11y-action="speak">
+            ▶ Bacakan Halaman
+          </button>
+
+          <button type="button" data-a11y-action="speak-selection">
+            Bacakan Teks Pilihan
+          </button>
+
+          <div class="mc-a11y-button-row">
+            <button type="button" data-a11y-action="pause" disabled>Jeda</button>
+            <button type="button" data-a11y-action="resume" disabled>Lanjutkan</button>
+            <button type="button" data-a11y-action="stop" disabled>Berhenti</button>
+          </div>
+        </div>
+
+        <div class="mc-a11y-field">
+          <label for="mc-a11y-voice">Pilihan suara</label>
+          <select id="mc-a11y-voice" data-a11y-voice>
+            <option value="">Otomatis - Bahasa Indonesia</option>
+          </select>
+        </div>
+
+        <div class="mc-a11y-field">
+          <label for="mc-a11y-rate">
+            Kecepatan suara
+            <output data-a11y-rate-value>1,0×</output>
+          </label>
+
+          <input
+            type="range"
+            id="mc-a11y-rate"
+            data-a11y-rate
+            min="0.7"
+            max="1.5"
+            step="0.1"
+            value="1">
+        </div>
+
+        <div class="mc-a11y-field">
+          <label for="mc-a11y-pitch">
+            Nada suara
+            <output data-a11y-pitch-value>1,0</output>
+          </label>
+
+          <input
+            type="range"
+            id="mc-a11y-pitch"
+            data-a11y-pitch
+            min="0.7"
+            max="1.5"
+            step="0.1"
+            value="1">
+        </div>
+
+        <p
+          class="mc-a11y-status"
+          data-a11y-speech-status
+          role="status"
+          aria-live="polite">
+          Pembaca teks siap digunakan.
+        </p>
+      </section>
+
+      <section class="mc-a11y-section">
+        <h3>Dikte Suara</h3>
+
+        <p class="mc-a11y-description">
+          Ubah ucapan menjadi teks menggunakan mikrofon.
+          Fitur ini memerlukan izin mikrofon dari browser.
+        </p>
+
+        <button
+          type="button"
+          class="mc-a11y-primary"
+          data-a11y-action="dictate">
+          ● Mulai Dikte
+        </button>
+
+        <label
+          class="mc-a11y-sr-only"
+          for="mc-a11y-dictation">
+          Hasil dikte suara
+        </label>
+
+        <textarea
+          id="mc-a11y-dictation"
+          data-a11y-dictation
+          rows="4"
+          placeholder="Hasil ucapan akan muncul di sini..."></textarea>
+
+        <div class="mc-a11y-button-row">
+          <button type="button" data-a11y-action="copy-dictation">
+            Salin Teks
+          </button>
+
+          <button type="button" data-a11y-action="clear-dictation">
+            Hapus Teks
+          </button>
+        </div>
+
+        <p
+          data-a11y-dictation-status
+          class="mc-a11y-status"
+          role="status"
+          aria-live="polite">
+          Mikrofon belum aktif.
+        </p>
+      </section>
+
+      <section class="mc-a11y-section">
+        <h3>Ukuran dan Keterbacaan</h3>
+
+        <div class="mc-a11y-scale">
+          <strong>Ukuran tampilan</strong>
+          <span data-a11y-scale-label>100%</span>
+
+          <div class="mc-a11y-button-row">
+            <button type="button" data-a11y-scale="decrease">
+              A− Perkecil
+            </button>
+
+            <button type="button" data-a11y-scale="reset">
+              Normal
+            </button>
+
+            <button type="button" data-a11y-scale="increase">
+              A+ Perbesar
+            </button>
+          </div>
+        </div>
+
+        <div class="mc-a11y-toggle-list">
+          <button type="button" data-a11y-toggle="readableFont" aria-pressed="false">
+            Font mudah dibaca <i aria-hidden="true"></i>
+          </button>
+
+          <button type="button" data-a11y-toggle="lineSpacing" aria-pressed="false">
+            Jarak antarbaris <i aria-hidden="true"></i>
+          </button>
+
+          <button type="button" data-a11y-toggle="letterSpacing" aria-pressed="false">
+            Jarak antarhuruf <i aria-hidden="true"></i>
+          </button>
+
+          <button type="button" data-a11y-toggle="underlineLinks" aria-pressed="false">
+            Garis bawah tautan <i aria-hidden="true"></i>
+          </button>
+
+          <button type="button" data-a11y-toggle="highlightLinks" aria-pressed="false">
+            Sorot tautan <i aria-hidden="true"></i>
+          </button>
+
+          <button type="button" data-a11y-toggle="hideImages" aria-pressed="false">
+            Sembunyikan gambar <i aria-hidden="true"></i>
+          </button>
+        </div>
+      </section>
+
+      <section class="mc-a11y-section">
+        <h3>Warna dan Kontras</h3>
+
+        <div class="mc-a11y-modes">
+          <button type="button" data-a11y-mode="normal" aria-pressed="true">
+            <span class="mc-a11y-color normal" aria-hidden="true"></span>
+            Normal
+          </button>
+
+          <button type="button" data-a11y-mode="highContrast" aria-pressed="false">
+            <span class="mc-a11y-color contrast" aria-hidden="true"></span>
+            Kontras Tinggi
+          </button>
+
+          <button type="button" data-a11y-mode="darkMode" aria-pressed="false">
+            <span class="mc-a11y-color dark" aria-hidden="true"></span>
+            Mode Gelap
+          </button>
+
+          <button type="button" data-a11y-toggle="grayscale" aria-pressed="false">
+            <span class="mc-a11y-color gray" aria-hidden="true"></span>
+            Grayscale
+          </button>
+        </div>
+      </section>
+
+      <section class="mc-a11y-section">
+        <h3>Navigasi dan Fokus</h3>
+
+        <div class="mc-a11y-toggle-list">
+          <button type="button" data-a11y-toggle="largeCursor" aria-pressed="false">
+            Kursor besar <i aria-hidden="true"></i>
+          </button>
+
+          <button type="button" data-a11y-toggle="readingGuide" aria-pressed="false">
+            Panduan membaca <i aria-hidden="true"></i>
+          </button>
+
+          <button type="button" data-a11y-toggle="reduceMotion" aria-pressed="false">
+            Kurangi animasi <i aria-hidden="true"></i>
+          </button>
+
+          <button type="button" data-a11y-toggle="focusMode" aria-pressed="false">
+            Mode fokus membaca <i aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <p class="mc-a11y-keyboard">
+          Navigasi keyboard: Tab untuk berpindah, Enter untuk memilih,
+          Escape untuk menutup panel.
+        </p>
+      </section>
+
+      <footer class="mc-a11y-footer">
+        <button type="button" data-a11y-action="reset-all">
+          ↺ Reset Semua Pengaturan
+        </button>
+
+        <p>Pengaturan tersimpan pada perangkat ini.</p>
+      </footer>
+
+    </div>
+  </section>
+
+  <div
+    class="mc-a11y-reading-guide"
+    data-a11y-guide
+    aria-hidden="true"></div>
+</div>

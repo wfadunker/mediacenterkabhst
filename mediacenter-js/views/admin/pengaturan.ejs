@@ -1,0 +1,480 @@
+
+<!DOCTYPE html>
+
+<html lang="id">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <meta
+        name="robots"
+        content="noindex,nofollow"
+    >
+
+    <title>
+        Pengaturan Website - Media Center HST
+    </title>
+
+
+    <link
+        rel="stylesheet"
+        href="<%= baseUrl %>/assets/css/admin.css?v=20261102"
+    >
+
+
+    <!-- =====================================================
+         STYLE KHUSUS HALAMAN PENGATURAN
+
+         Sengaja scoped supaya tidak mengganggu
+         halaman admin lainnya.
+    ====================================================== -->
+</head>
+
+
+<body>
+
+
+<%- include('../partials/sidebar') %>
+
+
+<main class="admin-main">
+
+    <div class="admin-container">
+
+
+        <!-- =================================================
+             PAGE HEADER
+        ================================================== -->
+
+        <header class="page-header">
+
+            <div>
+
+                <p class="eyebrow">
+                    Administrator
+                </p>
+
+
+                <h1>
+                    Pengaturan Website
+                </h1>
+
+
+                <p>
+                    Kelola informasi profil publik
+                    Media Center Kabupaten
+                    Hulu Sungai Tengah.
+                </p>
+
+            </div>
+
+
+            <div class="page-actions">
+
+                <a
+                    href="<%= baseUrl %>/tentang"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="btn btn-secondary"
+                >
+                    Lihat Halaman Tentang
+
+                    <span aria-hidden="true">
+                        ↗
+                    </span>
+                </a>
+
+            </div>
+
+        </header>
+
+
+
+        <!-- =================================================
+             SUCCESS
+        ================================================== -->
+
+        <% if (status==='saved') { %>
+
+            <div
+                class="settings-success"
+                role="status"
+            >
+                Pengaturan website berhasil disimpan.
+            </div>
+
+        <% } %>
+
+
+
+        <!-- =================================================
+             ERRORS
+        ================================================== -->
+
+        <% if (errors.length) { %>
+
+            <div
+                class="settings-errors"
+                role="alert"
+            >
+
+                <ul>
+
+                    <% for (const error of errors) { %>
+
+                        <li>
+                            <%= error %>
+                        </li>
+
+                    <% } %>
+
+                </ul>
+
+            </div>
+
+        <% } %>
+
+
+
+        <!-- =================================================
+             FORM
+        ================================================== -->
+
+        <form
+            method="post"
+            action=""
+            class="settings-page"
+        >
+
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<%= csrfToken %>"
+            >
+
+
+
+            <!-- =============================================
+                 LEFT
+            ============================================== -->
+
+            <div class="settings-stack">
+
+
+                <!-- PROFILE -->
+
+                <section class="settings-card">
+
+
+                    <div class="settings-card-head">
+
+                        <h2>
+                            Profil Media Center
+                        </h2>
+
+                        <p>
+                            Informasi ini ditampilkan
+                            pada bagian profil halaman Tentang.
+                        </p>
+
+                    </div>
+
+
+
+                    <!-- TITLE -->
+
+                    <div class="settings-field">
+
+                        <label
+                            for="about_title"
+                            class="settings-label"
+                        >
+                            Judul Profil
+
+                            <span
+                                class="settings-required"
+                                aria-hidden="true"
+                            >
+                                *
+                            </span>
+                        </label>
+
+
+                        <input
+                            id="about_title"
+                            name="about_title"
+                            type="text"
+                            class="settings-input"
+                            maxlength="150"
+                            required
+                            autocomplete="off"
+                            value="<%= settings.about_title %>"
+                        >
+
+
+                        <p class="settings-help">
+                            Contoh:
+                            Pusat informasi publik daerah.
+                        </p>
+
+                    </div>
+
+
+
+                    <!-- DESCRIPTION -->
+
+                    <div class="settings-field">
+
+                        <label
+                            for="about_description"
+                            class="settings-label"
+                        >
+                            Deskripsi Media Center
+
+                            <span
+                                class="settings-required"
+                                aria-hidden="true"
+                            >
+                                *
+                            </span>
+                        </label>
+
+
+                        <textarea
+                            id="about_description"
+                            name="about_description"
+                            class="settings-textarea"
+                            maxlength="1500"
+                            required
+                        ><%= settings.about_description %></textarea>
+
+
+                        <p class="settings-help">
+                            Gunakan bahasa resmi,
+                            ringkas, dan mudah dipahami
+                            masyarakat.
+                        </p>
+
+                    </div>
+
+
+                </section>
+
+
+
+                <!-- PORTAL -->
+
+                <section class="settings-card">
+
+
+                    <div class="settings-card-head">
+
+                        <h2>
+                            Portal Pemerintah
+                        </h2>
+
+                        <p>
+                            Atur tautan menuju portal resmi
+                            Pemerintah Kabupaten
+                            Hulu Sungai Tengah.
+                        </p>
+
+                    </div>
+
+
+
+                    <div class="settings-field">
+
+                        <label
+                            for="portal_url"
+                            class="settings-label"
+                        >
+                            URL Portal Resmi
+                        </label>
+
+
+                        <input
+                            id="portal_url"
+                            name="portal_url"
+                            type="url"
+                            class="settings-input"
+                            maxlength="255"
+                            inputmode="url"
+                            value="<%= settings.portal_url %>"
+                        >
+
+
+                        <p class="settings-help">
+                            Hanya alamat HTTPS
+                            dengan domain
+                            hstkab.go.id yang diperbolehkan.
+                        </p>
+
+                    </div>
+
+
+                </section>
+
+
+
+                <!-- ACTION -->
+
+                <div class="settings-actions">
+
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
+                        Simpan Perubahan
+                    </button>
+
+
+                    <a
+                        href="<%= baseUrl %>/tentang"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="btn btn-secondary"
+                    >
+                        Preview Halaman
+                    </a>
+
+
+                </div>
+
+
+            </div>
+
+
+
+            <!-- =============================================
+                 RIGHT INFO
+            ============================================== -->
+
+            <aside class="settings-info">
+
+
+                <section class="settings-card">
+
+
+                    <div class="settings-card-head">
+
+                        <h2>
+                            Informasi
+                        </h2>
+
+                        <p>
+                            Ringkasan penggunaan
+                            pengaturan website.
+                        </p>
+
+                    </div>
+
+
+
+                    <div class="settings-meta">
+
+
+                        <div class="settings-meta-row">
+
+                            <span>
+                                Halaman
+                            </span>
+
+                            <strong>
+                                Tentang
+                            </strong>
+
+                        </div>
+
+
+                        <div class="settings-meta-row">
+
+                            <span>
+                                Jenis
+                            </span>
+
+                            <strong>
+                                Konten statis
+                            </strong>
+
+                        </div>
+
+
+                        <div class="settings-meta-row">
+
+                            <span>
+                                Foto
+                            </span>
+
+                            <strong>
+                                Tidak digunakan
+                            </strong>
+
+                        </div>
+
+
+                        <div class="settings-meta-row">
+
+                            <span>
+                                Penyimpanan
+                            </span>
+
+                            <strong>
+                                MySQL
+                            </strong>
+
+                        </div>
+
+
+                        <div class="settings-meta-row">
+
+                            <span>
+                                Proteksi
+                            </span>
+
+                            <strong>
+                                Login + CSRF
+                            </strong>
+
+                        </div>
+
+
+                    </div>
+
+
+
+                    <div class="settings-note">
+
+                        Perubahan yang disimpan akan
+                        digunakan pada halaman
+                        <strong>Tentang Media Center</strong>.
+
+                        Tidak ada fitur upload foto
+                        pada pengaturan ini.
+
+                    </div>
+
+
+                </section>
+
+
+            </aside>
+
+
+        </form>
+
+
+    </div>
+
+</main>
+
+
+</body>
+</html>

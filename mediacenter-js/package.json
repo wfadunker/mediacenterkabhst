@@ -1,0 +1,25 @@
+{
+  "name": "mediacenter-hst-nodejs",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Migrasi PHP Media Center HST ke JavaScript Node.js + Express + EJS",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "seed:admin": "node scripts/seed-admin.js",
+    "test": "node --test && node scripts/verify-templates.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.6.1",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "multer": "^2.0.2",
+    "mysql2": "^3.12.0"
+  }
+}

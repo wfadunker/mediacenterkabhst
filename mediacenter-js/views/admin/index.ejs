@@ -1,0 +1,526 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#0B2E4F">
+  <meta name="robots" content="noindex, nofollow">
+
+  <title>Dashboard Administrator | Media Center HST</title>
+
+  <link
+    rel="stylesheet"
+    href="<%= baseUrl %>/assets/css/admin.css?v=20261102"
+  >
+</head>
+
+<body class="admin-dashboard-page">
+
+  <a href="#admin-content" class="mc-skip-link">
+    Lewati navigasi
+  </a>
+
+  <!-- SIDEBAR KHUSUS ADMIN -->
+  <%- include('../partials/sidebar') %>
+
+  <%
+    // Data dashboard berasal dari server.js.
+    const terbaru = Array.isArray(latestRows)
+      ? latestRows
+      : [];
+
+    const tanpaFotoTerbaru = terbaru.filter(
+      item => !item.gambar
+    );
+
+    const jumlahBerita = Math.max(
+      0,
+      Number(totalBerita) || 0
+    );
+
+    const jumlahKategori = Math.max(
+      0,
+      Number(totalKategori) || 0
+    );
+
+    const jumlahBergambar = Math.min(
+      jumlahBerita,
+      Math.max(0, Number(totalGambar) || 0)
+    );
+
+    const jumlahTanpaFoto =
+      jumlahBerita - jumlahBergambar;
+
+    const cakupanFoto = jumlahBerita
+      ? Math.round(jumlahBergambar / jumlahBerita * 100)
+      : 0;
+
+    const formatAngka = value =>
+      new Intl.NumberFormat('id-ID').format(value);
+  %>
+
+  <main
+    class="admin-main"
+    id="admin-content"
+    tabindex="-1"
+  >
+
+    <!-- ==========================================
+         1. TOPBAR ADMIN
+    =========================================== -->
+
+    <header class="app-topbar">
+
+      <form
+        class="tb-search"
+        method="get"
+        action="<%= baseUrl %>/admin/berita"
+        role="search"
+      >
+
+        <input
+          name="q"
+          type="search"
+          maxlength="100"
+          placeholder="Cari berita..."
+          aria-label="Cari berita"
+        >
+
+        <button
+          type="submit"
+          aria-label="Cari berita"
+        >
+          ⌕
+        </button>
+
+      </form>
+
+      <div
+        class="tb-user"
+        aria-label="Administrator: <%= username %>"
+      >
+
+        <div class="tb-avatar" aria-hidden="true">
+          <%= initial %>
+        </div>
+
+        <span class="tb-user-name">
+          <%= username %>
+        </span>
+
+      </div>
+
+    </header>
+
+    <% if (isDeleted) { %>
+
+      <div class="alert alert-success" role="status">
+        Berita berhasil dihapus.
+      </div>
+
+    <% } %>
+
+
+    <!-- ==========================================
+         2. SAMBUTAN ADMIN
+    =========================================== -->
+
+    <section
+      class="hero fade-in"
+      aria-labelledby="dashboard-title"
+    >
+
+      <div class="hero-copy">
+
+        <span class="hero-eyebrow">
+          Panel Administrator · Media Center HST
+        </span>
+
+        <h1 id="dashboard-title">
+          Selamat datang, <%= username %>
+        </h1>
+
+        <p>
+          Kelola publikasi daerah dengan lebih cepat.
+          Pembaruan terakhir:
+          <strong><%= updateTerakhir %></strong>.
+        </p>
+
+        <div class="hero-actions">
+
+          <a
+            class="btn btn-primary"
+            href="<%= baseUrl %>/admin/berita/tambah"
+          >
+            + Tambah Berita
+          </a>
+
+          <a
+            class="btn btn-secondary"
+            href="<%= baseUrl %>/admin/berita"
+          >
+            Kelola Berita
+          </a>
+
+          <a
+            class="btn btn-secondary"
+            href="<%= baseUrl %>/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Lihat Website Publik ↗
+          </a>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ==========================================
+         3. STATISTIK PUBLIKASI
+    =========================================== -->
+
+    <section
+      class="stats-grid"
+      aria-label="Statistik konten"
+    >
+
+      <article class="stat-card fade-in">
+        <div class="stat-info">
+
+          <strong>
+            <%= formatAngka(jumlahBerita) %>
+          </strong>
+
+          <span>Total Berita</span>
+
+        </div>
+      </article>
+
+      <article class="stat-card fade-in">
+        <div class="stat-info">
+
+          <strong>
+            <%= formatAngka(jumlahKategori) %>
+          </strong>
+
+          <span>Kategori Berita</span>
+
+        </div>
+      </article>
+
+      <article class="stat-card fade-in">
+        <div class="stat-info">
+
+          <strong>
+            <%= formatAngka(jumlahBergambar) %>
+          </strong>
+
+          <span>Berita Bergambar</span>
+
+        </div>
+      </article>
+
+      <article class="stat-card fade-in">
+        <div class="stat-info">
+
+          <strong>
+            <%= formatAngka(jumlahTanpaFoto) %>
+          </strong>
+
+          <span>Berita Tanpa Gambar</span>
+
+        </div>
+      </article>
+
+    </section>
+
+
+    <!-- ==========================================
+         4. PEMERIKSAAN KONTEN + BERITA TERBARU
+    =========================================== -->
+
+    <section
+      class="dash-panels"
+      aria-label="Pemeriksaan dan publikasi terbaru"
+    >
+
+      <!-- PANEL PEMERIKSAAN KONTEN -->
+
+      <article class="card fade-in">
+
+        <div class="card-head">
+
+          <div>
+            <h2>Perlu Dilengkapi</h2>
+            <p>
+              Pemeriksaan foto pada lima berita terbaru
+            </p>
+          </div>
+
+          <span class="card-badge">
+            <%= tanpaFotoTerbaru.length %> perlu dicek
+          </span>
+
+        </div>
+
+        <div class="dash-check-summary">
+
+          <span class="dash-check-number">
+            <%= cakupanFoto %>%
+          </span>
+
+          <div>
+
+            <strong>
+              Cakupan gambar seluruh berita
+            </strong>
+
+            <small>
+              <%= formatAngka(jumlahBergambar) %>
+              dari
+              <%= formatAngka(jumlahBerita) %>
+              berita memiliki gambar.
+            </small>
+
+          </div>
+
+        </div>
+
+        <% if (tanpaFotoTerbaru.length > 0) { %>
+
+          <ul class="dash-check-list">
+
+            <% for (const berita of tanpaFotoTerbaru) { %>
+
+              <li>
+
+                <a
+                  href="<%= baseUrl %>/admin/berita/edit?id=<%= Number(berita.id) || 0 %>"
+                >
+                  <%= berita.judul || 'Berita tanpa judul' %>
+                  →
+                </a>
+
+                <span>
+                  Belum memiliki gambar · Klik untuk melengkapi
+                </span>
+
+              </li>
+
+            <% } %>
+
+          </ul>
+
+        <% } else { %>
+
+          <div class="dash-empty">
+
+            <% if (terbaru.length) { %>
+
+              Lima berita terbaru sudah memiliki gambar.
+              Periksa daftar berita untuk mengecek
+              publikasi lainnya.
+
+            <% } else { %>
+
+              Belum ada berita yang bisa diperiksa.
+              Tambahkan publikasi terlebih dahulu.
+
+            <% } %>
+
+          </div>
+
+        <% } %>
+
+        <div class="dash-card-bottom">
+
+          <div class="dash-shortcuts">
+
+            <a href="<%= baseUrl %>/admin/berita">
+              Kelola semua berita →
+            </a>
+
+            <a href="<%= baseUrl %>/admin/pengaturan">
+              Pengaturan situs →
+            </a>
+
+          </div>
+
+        </div>
+
+        <p class="dash-footnote">
+          Daftar pemeriksaan hanya mencakup lima berita
+          terbaru; angka cakupan gambar berasal dari
+          statistik keseluruhan.
+        </p>
+
+      </article>
+
+
+      <!-- PANEL BERITA TERBARU -->
+
+      <article class="card fade-in">
+
+        <div class="card-head">
+
+          <div>
+
+            <h2>Berita Terbaru</h2>
+
+            <p>
+              Lima publikasi terakhir yang bisa langsung diedit
+            </p>
+
+          </div>
+
+          <a
+            class="card-link"
+            href="<%= baseUrl %>/admin/berita"
+          >
+            Lihat semua →
+          </a>
+
+        </div>
+
+        <% if (terbaru.length > 0) { %>
+
+          <div class="news-list">
+
+            <% for (const berita of terbaru) { %>
+
+              <%
+                const foto = gambarUrl(berita.gambar);
+              %>
+
+              <a
+                class="news-item"
+                href="<%= baseUrl %>/admin/berita/edit?id=<%= Number(berita.id) || 0 %>"
+              >
+
+                <div class="news-thumb">
+
+                  <% if (foto) { %>
+
+                    <img
+                      src="<%= foto %>"
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                    >
+
+                  <% } else { %>
+
+                    <span aria-hidden="true">▤</span>
+
+                  <% } %>
+
+                </div>
+
+                <div class="news-body">
+
+                  <span class="news-cat">
+                    <%= berita.kategori || 'Informasi' %>
+                  </span>
+
+                  <h3>
+                    <%= berita.judul || 'Berita tanpa judul' %>
+                  </h3>
+
+                  <span class="news-meta">
+
+                    <%= tanggalAdmin(berita.tanggal) %>
+                    ·
+                    <%= berita.penulis || 'Media Center HST' %>
+
+                  </span>
+
+                  <% if (!berita.gambar) { %>
+
+                    <span class="dash-news-status">
+                      Gambar belum tersedia
+                    </span>
+
+                  <% } %>
+
+                </div>
+
+              </a>
+
+            <% } %>
+
+          </div>
+
+        <% } else { %>
+
+          <div class="empty-block">
+
+            <p>
+              Belum ada berita. Mulai dengan membuat
+              publikasi pertama.
+            </p>
+
+            <a
+              class="btn btn-primary"
+              href="<%= baseUrl %>/admin/berita/tambah"
+            >
+              + Tambah Berita
+            </a>
+
+          </div>
+
+        <% } %>
+
+      </article>
+
+    </section>
+
+
+    <!-- ==========================================
+         5. AKSES CEPAT
+    =========================================== -->
+
+    <section
+      class="dash-report"
+      aria-label="Akses operasional"
+    >
+
+      <p>
+        <strong>Akses cepat:</strong>
+        Perbarui berita, atur profil Media Center,
+        atau tinjau tampilan website publik.
+      </p>
+
+      <div class="dash-shortcuts">
+
+        <a href="<%= baseUrl %>/admin/berita/tambah">
+          Buat berita
+        </a>
+
+        <a href="<%= baseUrl %>/admin/pengaturan">
+          Profil situs
+        </a>
+
+        <a
+          href="<%= baseUrl %>/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Tinjau publik ↗
+        </a>
+
+      </div>
+
+    </section>
+
+  </main>
+<script
+  src="<%= baseUrl %>/assets/js/acse.js?v=4"
+  defer>
+</script>
+</body>
+</html>
