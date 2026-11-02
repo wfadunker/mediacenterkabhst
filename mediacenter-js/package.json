@@ -11,7 +11,7 @@
     "test": "node --test && node scripts/verify-templates.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
