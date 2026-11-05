@@ -1,169 +1,191 @@
 'use strict';
 
-/**
- * Persistent MySQL session store for express-session.
- * Uses the project's existing mysql2 dependency, so no additional
- * production dependency is required.
- */
 const session = require('express-session');
 const mysql = require('mysql2/promise');
-
-const TABLE = 'admin_sessions';
 
 class MySQLSessionStore extends session.Store {
   constructor(options = {}) {
     super();
 
-    if (!options.database) {
-      throw new Error('DB_NAME wajib diisi untuk MySQL session store.');
+    const ca = String(
+      options.ssl?.ca || process.env.DB_SSL_CA || ''
+    ).replace(/\\n/g, '\n').trim();
+
+    if (!ca) {
+      throw new Error('DB_SSL_CA belum dikonfigurasi.');
     }
 
-    this.expiration = Number(options.expiration) || 8 * 60 * 60 * 1000;
+    this.expiration = Number(
+      options.expiration || 8 * 60 * 60 * 1000
+    );
+
     this.pool = mysql.createPool({
-      host: options.host || '127.0.0.1',
-      port: Number(options.port || 3306),
-      user: options.user || 'root',
-      password: options.password || '',
-      database: options.database,
+      host: options.host || process.env.DB_HOST,
+      port: Number(options.port || process.env.DB_PORT || 4000),
+      user: options.user || process.env.DB_USER,
+      password: options.password ?? process.env.DB_PASSWORD,
+      database: options.database || process.env.DB_NAME,
+
+      // WAJIB untuk TiDB Cloud
+      ssl: {
+        ca,
+        rejectUnauthorized: true,
+        minVersion: 'TLSv1.2'
+      },
+
       waitForConnections: true,
-      connectionLimit: Number(options.connectionLimit) || 5,
+      connectionLimit: Number(options.connectionLimit || 1),
       queueLimit: 0,
-      connectTimeout: 10000,
-      enableKeepAlive: true,
-      charset: 'utf8mb4'
+      connectTimeout: 15000,
+      charset: 'utf8mb4',
+      timezone: '+08:00'
     });
 
-    // Lazy DDL: aplikasi tidak membuka koneksi DB hanya karena modul di-load.
     this.ready = null;
-    this.writeCount = 0;
   }
 
-  ensureReady() {
+  async ensureReady() {
     if (!this.ready) {
-      this.ready = this.pool.execute(
-        `CREATE TABLE IF NOT EXISTS ${TABLE} (
+      this.ready = this.pool.execute(`
+        CREATE TABLE IF NOT EXISTS admin_sessions (
           session_id VARCHAR(128) NOT NULL,
           expires BIGINT UNSIGNED NOT NULL,
           data MEDIUMTEXT NOT NULL,
           PRIMARY KEY (session_id),
           KEY idx_admin_sessions_expires (expires)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
-      ).then(() => true);
+        ) ENGINE=InnoDB
+          DEFAULT CHARSET=utf8mb4
+          COLLATE=utf8mb4_unicode_ci
+      `).catch(error => {
+        this.ready = null;
+        throw error;
+      });
     }
 
     return this.ready;
   }
 
-  run(callback, operation) {
-    Promise.resolve()
-      .then(() => this.ensureReady())
-      .then(operation)
-      .then(
-        result => {
-          if (typeof callback === 'function') callback(null, result);
-        },
-        error => {
-          if (typeof callback === 'function') callback(error);
-          else this.emit('error', error);
-        }
+  execute(callback, operation) {
+    const promise = Promise.resolve().then(operation);
+
+    if (typeof callback === 'function') {
+      promise.then(
+        result => callback(null, result),
+        error => callback(error)
       );
+    }
+
+    return promise;
   }
 
-  expiryFor(sessionData) {
-    const cookie = sessionData && sessionData.cookie || {};
-    const cookieExpiry = cookie.expires
-      ? new Date(cookie.expires).getTime()
-      : Date.now() + (Number(cookie.originalMaxAge) || this.expiration);
+  get(sid, callback) {
+    return this.execute(callback, async () => {
+      await this.ensureReady();
 
-    return Number.isFinite(cookieExpiry) && cookieExpiry > Date.now()
-      ? Math.trunc(cookieExpiry)
-      : Date.now() + this.expiration;
-  }
-
-  get(sessionId, callback) {
-    this.run(callback, async () => {
-      const now = Date.now();
-      const [rows] = await this.pool.execute(
-        `SELECT data FROM ${TABLE}
-         WHERE session_id = ? AND expires > ?
+      const [result] = await this.pool.execute(
+        `SELECT data, expires
+         FROM admin_sessions
+         WHERE session_id = ?
          LIMIT 1`,
-        [sessionId, now]
+        [sid]
       );
 
-      if (!rows.length) {
-        await this.pool.execute(
-          `DELETE FROM ${TABLE} WHERE session_id = ? AND expires <= ?`,
-          [sessionId, now]
-        );
+      if (!result.length) return null;
+
+      const row = result[0];
+
+      if (Number(row.expires) <= Date.now()) {
+        await this.destroy(sid);
         return null;
       }
 
-      try {
-        return JSON.parse(rows[0].data);
-      } catch {
-        await this.destroyAsync(sessionId);
-        return null;
-      }
+      return JSON.parse(row.data);
     });
   }
 
-  set(sessionId, sessionData, callback) {
-    this.run(callback, async () => {
-      const payload = JSON.stringify(sessionData);
-      const expires = this.expiryFor(sessionData);
+  set(sid, sess, callback) {
+    return this.execute(callback, async () => {
+      await this.ensureReady();
+
+      const cookieExpiry = sess.cookie?.expires
+        ? new Date(sess.cookie.expires).getTime()
+        : Date.now() + this.expiration;
+
+      const expires = Number.isFinite(cookieExpiry)
+        ? cookieExpiry
+        : Date.now() + this.expiration;
 
       await this.pool.execute(
-        `INSERT INTO ${TABLE} (session_id, expires, data)
+        `INSERT INTO admin_sessions
+          (session_id, expires, data)
          VALUES (?, ?, ?)
          ON DUPLICATE KEY UPDATE
-           expires = VALUES(expires),
-           data = VALUES(data)`,
-        [sessionId, expires, payload]
+          expires = VALUES(expires),
+          data = VALUES(data)`,
+        [sid, expires, JSON.stringify(sess)]
       );
-
-      this.writeCount += 1;
-      if (this.writeCount >= 100) {
-        this.writeCount = 0;
-        await this.pool.execute(
-          `DELETE FROM ${TABLE} WHERE expires <= ?`,
-          [Date.now()]
-        );
-      }
     });
   }
 
-  destroyAsync(sessionId) {
-    return this.pool.execute(
-      `DELETE FROM ${TABLE} WHERE session_id = ?`,
-      [sessionId]
-    );
-  }
+  destroy(sid, callback) {
+    return this.execute(callback, async () => {
+      await this.ensureReady();
 
-  destroy(sessionId, callback) {
-    this.run(callback, () => this.destroyAsync(sessionId));
-  }
-
-  touch(sessionId, sessionData, callback) {
-    this.run(callback, async () => {
       await this.pool.execute(
-        `UPDATE ${TABLE} SET expires = ? WHERE session_id = ?`,
-        [this.expiryFor(sessionData), sessionId]
+        'DELETE FROM admin_sessions WHERE session_id = ?',
+        [sid]
       );
     });
   }
 
-  clearExpired(callback) {
-    this.run(callback, async () => {
+  touch(sid, sess, callback) {
+    return this.execute(callback, async () => {
+      await this.ensureReady();
+
+      const cookieExpiry = sess.cookie?.expires
+        ? new Date(sess.cookie.expires).getTime()
+        : Date.now() + this.expiration;
+
+      const expires = Number.isFinite(cookieExpiry)
+        ? cookieExpiry
+        : Date.now() + this.expiration;
+
+      await this.pool.execute(
+        `UPDATE admin_sessions
+         SET expires = ?
+         WHERE session_id = ?`,
+        [expires, sid]
+      );
+    });
+  }
+
+  length(callback) {
+    return this.execute(callback, async () => {
+      await this.ensureReady();
+
       const [result] = await this.pool.execute(
-        `DELETE FROM ${TABLE} WHERE expires <= ?`,
+        'SELECT COUNT(*) AS total FROM admin_sessions WHERE expires > ?',
         [Date.now()]
       );
-      return result.affectedRows;
+
+      return Number(result[0].total);
     });
   }
 
-  close() {
-    return this.pool.end();
+  clear(callback) {
+    return this.execute(callback, async () => {
+      await this.ensureReady();
+
+      await this.pool.execute(
+        'DELETE FROM admin_sessions'
+      );
+    });
+  }
+
+  close(callback) {
+    return this.execute(callback, async () => {
+      await this.pool.end();
+    });
   }
 }
 
