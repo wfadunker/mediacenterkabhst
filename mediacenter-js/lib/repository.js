@@ -554,27 +554,26 @@ async function latestNews(limit = 7) {
   return rows(sql);
 }
 // ============================================================
-// 11. GET NEWS BY ID
+// GET NEWS BY ID
 // ============================================================
 
 async function getById(id) {
-  const numericId = validId(id);
+  const numericId = Number(id);
 
-  if (!numericId) {
+  if (!Number.isFinite(numericId)) {
     return null;
   }
 
+  // JSON storage
   if (mode === 'json') {
     return state.berita.find(
       item => Number(item.id) === numericId
     ) || null;
   }
 
+  // MySQL / TiDB Cloud
   const result = await rows(
-    `SELECT *
-     FROM berita
-     WHERE id = ?
-     LIMIT 1`,
+    'SELECT * FROM berita WHERE id = ? LIMIT 1',
     [numericId]
   );
 
@@ -1352,6 +1351,33 @@ module.exports = {
   saveSettings,
 
   // Admin
+  getUser,
+  createUser
+};
+module.exports = {
+  mode,
+  testConnection,
+
+  listNews,
+  latestNews,
+
+  getById,
+  getBySlug,
+  uniqueSlug,
+
+  createNews,
+  updateNews,
+  deleteNews,
+
+  categories,
+  years,
+
+  stats,
+  activity,
+
+  getSettings,
+  saveSettings,
+
   getUser,
   createUser
 };
