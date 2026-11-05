@@ -534,21 +534,16 @@ async function listNews(filters = {}) {
 // ============================================================
 
 async function latestNews(limit = 7) {
-  const parsedLimit = Number(limit);
+  const parsed = Number(limit);
 
-  // Pastikan LIMIT selalu integer yang aman
-  const safeLimit = Number.isFinite(parsedLimit)
-    ? Math.min(100, Math.max(1, Math.floor(parsedLimit)))
+  const safeLimit = Number.isSafeInteger(parsed)
+    ? Math.min(100, Math.max(1, parsed))
     : 7;
 
-  // JSON storage
   if (mode === 'json') {
     return filterNews(state.berita).slice(0, safeLimit);
   }
 
-  // MySQL / TiDB Cloud
-  // LIMIT menggunakan integer tervalidasi,
-  // bukan parameter placeholder.
   const sql = `
     SELECT *
     FROM berita
