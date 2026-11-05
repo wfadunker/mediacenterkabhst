@@ -1,7 +1,12 @@
 'use strict';
 
 // ============================================================
-// DEPENDENCIES
+// MEDIA CENTER HST - DATABASE REPOSITORY
+// Optimized for Laragon, MySQL and TiDB Cloud
+// ============================================================
+
+// ============================================================
+// 1. DEPENDENCIES
 // ============================================================
 
 try {
@@ -13,22 +18,29 @@ try {
 const fs = require('node:fs');
 const path = require('node:path');
 const mysql = require('mysql2/promise');
-const { defaultSettings } = require('./helpers');
+
+const {
+  defaultSettings,
+  slugify
+} = require('./helpers');
 
 // ============================================================
-// CONFIGURATION
+// 2. CONFIGURATION
 // ============================================================
 
 const isVercel = process.env.VERCEL === '1';
-const mode = String(process.env.DB_MODE || (isVercel ? 'mysql' : 'json'))
-  .trim()
-  .toLowerCase();
+
+const mode = String(
+  process.env.DB_MODE || (isVercel ? 'mysql' : 'json')
+).trim().toLowerCase();
 
 const jsonFile = path.resolve(
   process.env.JSON_DB_FILE ||
-  (isVercel
-    ? '/tmp/mediacenter-hst/db.json'
-    : path.join(__dirname, '../data/db.json'))
+  (
+    isVercel
+      ? '/tmp/mediacenter-hst/db.json'
+      : path.join(__dirname, '../data/db.json')
+  )
 );
 
 const emptyState = () => ({
@@ -41,31 +53,92 @@ let pool = null;
 let state = null;
 
 // ============================================================
-// HELPERS
+// 3. GENERAL HELPERS
 // ============================================================
 
 const normalize = value =>
   String(value ?? '').toLocaleLowerCase('id-ID');
 
-function positiveInteger(value, fallback, maximum = 100) {
-  const number = Math.floor(Number(value));
+function positiveInteger(value, fallback = 1, maximum = 100) {
+  const number = Number(value);
 
-  if (!Number.isFinite(number) || number < 1) {
+  if (
+    !Number.isSafeInteger(number) ||
+    number < 1
+  ) {
     return fallback;
   }
 
   return Math.min(number, maximum);
 }
 
-function getSslConfig() {
-  const rawCa = process.env.DB_SSL_CA;
-  const ca = rawCa
-    ? rawCa.replace(/\\n/g, '\n').trim()
-    : '';
+function validId(value) {
+  const id = Number(value);
 
-  if (isVercel && !ca) {
+  return Number.isSafeInteger(id) && id > 0
+    ? id
+    : null;
+}
+
+function validYear(value) {
+  const year = Number(value);
+
+  return Number.isInteger(year) &&
+    year >= 1900 &&
+    year <= 9999
+      ? year
+      : null;
+}
+
+function validObject(value) {
+  return value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value);
+}
+
+function getLocalDate() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Makassar',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
+
+  const values = Object.fromEntries(
+    parts.map(item => [item.type, item.value])
+  );
+
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function shiftDate(dateString, days) {
+  const [year, month, day] = dateString
+    .split('-')
+    .map(Number);
+
+  const date = new Date(
+    Date.UTC(year, month - 1, day + days)
+  );
+
+  return date.toISOString().slice(0, 10);
+}
+
+// ============================================================
+// 4. MYSQL SSL CONFIGURATION
+// ============================================================
+
+function getSslConfig() {
+  const raw = String(
+    process.env.DB_SSL_CA || ''
+  );
+
+  const ca = raw
+    .replace(/\\r?\\n/g, '\n')
+    .trim();
+
+  if (isVercel && !ca.includes('-----BEGIN CERTIFICATE-----')) {
     throw new Error(
-      'DB_SSL_CA belum diatur. Masukkan isi sertifikat CA TiDB Cloud pada Environment Variables Vercel.'
+      'DB_SSL_CA tidak valid. Masukkan isi sertifikat CA TiDB Cloud.'
     );
   }
 
@@ -88,7 +161,7 @@ function getSslConfig() {
 }
 
 // ============================================================
-// JSON STORAGE (LOCAL DEVELOPMENT)
+// 5. JSON STORAGE
 // ============================================================
 
 function jsonLoad() {
@@ -96,31 +169,57 @@ function jsonLoad() {
     return emptyState();
   }
 
-  const content = fs.readFileSync(jsonFile, 'utf8');
+  const content = fs.readFileSync(
+    jsonFile,
+    'utf8'
+  );
 
   if (!content.trim()) {
     return emptyState();
   }
 
-  const data = JSON.parse(content);
+  let data;
+
+  try {
+    data = JSON.parse(content);
+  } catch (error) {
+    throw new Error(
+      `Database JSON tidak valid: ${error.message}`
+    );
+  }
+
+  if (!validObject(data)) {
+    return emptyState();
+  }
 
   return {
-    berita: Array.isArray(data.berita) ? data.berita : [],
-    users: Array.isArray(data.users) ? data.users : [],
-    pengaturan:
-      data.pengaturan &&
-      typeof data.pengaturan === 'object' &&
-      !Array.isArray(data.pengaturan)
-        ? data.pengaturan
-        : {}
+    berita: Array.isArray(data.berita)
+      ? data.berita
+      : [],
+
+    users: Array.isArray(data.users)
+      ? data.users
+      : [],
+
+    pengaturan: validObject(data.pengaturan)
+      ? data.pengaturan
+      : {}
   };
 }
 
 function save() {
-  const directory = path.dirname(jsonFile);
-  const temporaryFile = `${jsonFile}.${process.pid}.tmp`;
+  if (!state) {
+    throw new Error('Database JSON belum diinisialisasi.');
+  }
 
-  fs.mkdirSync(directory, { recursive: true });
+  const directory = path.dirname(jsonFile);
+
+  const temporaryFile =
+    `${jsonFile}.${process.pid}.tmp`;
+
+  fs.mkdirSync(directory, {
+    recursive: true
+  });
 
   try {
     fs.writeFileSync(
@@ -129,14 +228,17 @@ function save() {
       'utf8'
     );
 
-    fs.renameSync(temporaryFile, jsonFile);
+    fs.renameSync(
+      temporaryFile,
+      jsonFile
+    );
   } catch (error) {
     try {
       if (fs.existsSync(temporaryFile)) {
         fs.unlinkSync(temporaryFile);
       }
-    } catch (_) {
-      // Ignore cleanup errors.
+    } catch {
+      // Abaikan kesalahan pembersihan.
     }
 
     throw error;
@@ -144,17 +246,21 @@ function save() {
 }
 
 // ============================================================
-// DATABASE INITIALIZATION
+// 6. DATABASE INITIALIZATION
 // ============================================================
 
 if (mode === 'json') {
   if (isVercel) {
     throw new Error(
-      'Vercel harus menggunakan DB_MODE=mysql. Penyimpanan JSON di Vercel tidak persisten.'
+      'Vercel harus menggunakan DB_MODE=mysql. JSON tidak persisten.'
     );
   }
 
-  fs.mkdirSync(path.dirname(jsonFile), { recursive: true });
+  fs.mkdirSync(
+    path.dirname(jsonFile),
+    { recursive: true }
+  );
+
   state = jsonLoad();
 
 } else if (mode === 'mysql') {
@@ -166,13 +272,13 @@ if (mode === 'json') {
     'DB_NAME'
   ];
 
-  const missing = required.filter(
-    key => !String(process.env[key] || '').trim()
+  const missing = required.filter(key =>
+    !String(process.env[key] || '').trim()
   );
 
   if (missing.length) {
     throw new Error(
-      `Konfigurasi MySQL belum lengkap: ${missing.join(', ')}`
+      `Konfigurasi database belum lengkap: ${missing.join(', ')}`
     );
   }
 
@@ -180,7 +286,11 @@ if (mode === 'json') {
     process.env.DB_PORT || (isVercel ? 4000 : 3306)
   );
 
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  if (
+    !Number.isInteger(port) ||
+    port < 1 ||
+    port > 65535
+  ) {
     throw new Error('DB_PORT tidak valid.');
   }
 
@@ -200,6 +310,8 @@ if (mode === 'json') {
       20
     ),
 
+    maxIdle: isVercel ? 2 : 5,
+    idleTimeout: 60000,
     queueLimit: 0,
 
     connectTimeout: 15000,
@@ -215,19 +327,26 @@ if (mode === 'json') {
   });
 
 } else {
-  throw new Error('DB_MODE harus bernilai json atau mysql.');
+  throw new Error(
+    'DB_MODE harus bernilai json atau mysql.'
+  );
 }
 
 // ============================================================
-// QUERY HELPERS
+// 7. DATABASE QUERY HELPERS
 // ============================================================
 
 async function rows(sql, params = []) {
   if (!pool) {
-    throw new Error('Koneksi MySQL belum tersedia.');
+    throw new Error(
+      'Koneksi MySQL belum tersedia.'
+    );
   }
 
-  const [result] = await pool.execute(sql, params);
+  const [result] = await pool.execute(
+    sql,
+    params
+  );
 
   return result;
 }
@@ -240,41 +359,50 @@ async function testConnection() {
     };
   }
 
-  await rows('SELECT 1 AS connection_test');
+  const result = await rows(
+    'SELECT DATABASE() AS database_name'
+  );
 
   return {
     ok: true,
     mode: 'mysql',
-    database: process.env.DB_NAME
+    database: result[0]?.database_name || null
   };
 }
 
 // ============================================================
-// NEWS FILTER AND LIST
+// 8. NEWS FILTER
 // ============================================================
 
 function filterNews(items, filters = {}) {
-  const list = items.filter(item => {
+  const q = normalize(filters.q || '');
+  const kategori = String(filters.kategori || '');
+  const tahun = validYear(filters.tahun);
 
+  const list = items.filter(item => {
     if (
-      filters.q &&
-      ![item.judul, item.kategori, item.penulis].some(value =>
-        normalize(value).includes(normalize(filters.q))
+      q &&
+      ![
+        item.judul,
+        item.kategori,
+        item.penulis
+      ].some(value =>
+        normalize(value).includes(q)
       )
     ) {
       return false;
     }
 
     if (
-      filters.kategori &&
-      item.kategori !== filters.kategori
+      kategori &&
+      item.kategori !== kategori
     ) {
       return false;
     }
 
     if (
-      filters.tahun &&
-      String(item.tanggal).slice(0, 4) !== String(filters.tahun)
+      tahun &&
+      String(item.tanggal).slice(0, 4) !== String(tahun)
     ) {
       return false;
     }
@@ -282,22 +410,45 @@ function filterNews(items, filters = {}) {
     return true;
   });
 
-  return list.sort((a, b) => {
+  list.sort((a, b) => {
     const order =
-      String(a.tanggal).localeCompare(String(b.tanggal)) ||
+      String(a.tanggal || '').localeCompare(
+        String(b.tanggal || '')
+      ) ||
       Number(a.id || 0) - Number(b.id || 0);
 
-    return filters.urut === 'terlama' ? order : -order;
+    return filters.urut === 'terlama'
+      ? order
+      : -order;
   });
+
+  return list;
 }
 
+// ============================================================
+// 9. LIST NEWS
+// ============================================================
+
 async function listNews(filters = {}) {
-  const page = positiveInteger(filters.page, 1, 1000000);
-  const limit = positiveInteger(filters.limit, 9, 100);
+  const page = positiveInteger(
+    filters.page,
+    1,
+    1000000
+  );
+
+  const limit = positiveInteger(
+    filters.limit,
+    9,
+    100
+  );
+
   const offset = (page - 1) * limit;
 
   if (mode === 'json') {
-    const found = filterNews(state.berita, filters);
+    const found = filterNews(
+      state.berita,
+      filters
+    );
 
     return {
       rows: found.slice(offset, offset + limit),
@@ -305,11 +456,13 @@ async function listNews(filters = {}) {
     };
   }
 
-  let sql = ' FROM berita WHERE 1=1';
+  let where = ' WHERE 1=1';
   const params = [];
 
-  if (filters.q) {
-    sql += `
+  const q = String(filters.q || '').trim();
+
+  if (q) {
+    where += `
       AND (
         judul LIKE ?
         OR kategori LIKE ?
@@ -317,37 +470,67 @@ async function listNews(filters = {}) {
       )
     `;
 
-    const pattern = `%${String(filters.q)}%`;
+    const pattern = `%${q}%`;
 
-    params.push(pattern, pattern, pattern);
+    params.push(
+      pattern,
+      pattern,
+      pattern
+    );
   }
 
-  if (filters.kategori) {
-    sql += ' AND kategori = ?';
-    params.push(filters.kategori);
+  const kategori = String(
+    filters.kategori || ''
+  ).trim();
+
+  if (kategori) {
+    where += ' AND kategori = ?';
+    params.push(kategori);
   }
 
-  if (filters.tahun) {
-    sql += ' AND YEAR(tanggal) = ?';
-    params.push(Number(filters.tahun));
+  const tahun = validYear(filters.tahun);
+
+  if (tahun) {
+    where += ' AND tanggal >= ? AND tanggal < ?';
+
+    params.push(
+      `${tahun}-01-01`,
+      `${tahun + 1}-01-01`
+    );
   }
 
-  const count = await rows(
-    `SELECT COUNT(*) AS total ${sql}`,
-    params
-  );
+  const order =
+    filters.urut === 'terlama'
+      ? 'ASC'
+      : 'DESC';
 
-  const order = filters.urut === 'terlama' ? 'ASC' : 'DESC';
+  const [count, found] = await Promise.all([
+    rows(
+      `SELECT COUNT(*) AS total
+       FROM berita
+       ${where}`,
+      params
+    ),
 
-  const found = await rows(
-    `SELECT
-      id, judul, slug, isi, gambar,
-      kategori, tanggal, penulis, sumber, updated_at
-     ${sql}
-     ORDER BY tanggal ${order}, id ${order}
-     LIMIT ${limit} OFFSET ${offset}`,
-    params
-  );
+    rows(
+      `SELECT
+        id,
+        judul,
+        slug,
+        isi,
+        gambar,
+        kategori,
+        tanggal,
+        penulis,
+        sumber,
+        updated_at
+       FROM berita
+       ${where}
+       ORDER BY tanggal ${order}, id ${order}
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    )
+  ]);
 
   return {
     rows: found,
@@ -356,34 +539,39 @@ async function listNews(filters = {}) {
 }
 
 // ============================================================
-// LATEST NEWS
+// 10. LATEST NEWS
 // ============================================================
 
 async function latestNews(limit = 7) {
-  const safeLimit = positiveInteger(limit, 7, 100);
+  const safeLimit = positiveInteger(
+    limit,
+    7,
+    100
+  );
 
   if (mode === 'json') {
-    return filterNews(state.berita).slice(0, safeLimit);
+    return filterNews(
+      state.berita
+    ).slice(0, safeLimit);
   }
 
   return rows(
     `SELECT *
      FROM berita
      ORDER BY tanggal DESC, id DESC
-     LIMIT ${safeLimit}`
+     LIMIT ?`,
+    [safeLimit]
   );
 }
 
 // ============================================================
-// GET NEWS
+// 11. GET NEWS BY ID
 // ============================================================
 
 async function getById(id) {
-  const numericId = Number(id);
+  const numericId = validId(id);
 
-  if (!Number.isFinite(numericId)) {
-    return null;
-  }
+  if (!numericId) return null;
 
   if (mode === 'json') {
     return state.berita.find(
@@ -399,48 +587,63 @@ async function getById(id) {
   return result[0] || null;
 }
 
+// ============================================================
+// 12. GET NEWS BY SLUG
+// ============================================================
+
 async function getBySlug(slug) {
+  const value = String(slug || '').trim();
+
+  if (!value) return null;
+
   if (mode === 'json') {
     return state.berita.find(
-      item => item.slug === slug
+      item => item.slug === value
     ) || null;
   }
 
   const result = await rows(
     'SELECT * FROM berita WHERE slug = ? LIMIT 1',
-    [slug]
+    [value]
   );
 
   return result[0] || null;
 }
 
 // ============================================================
-// SLUG GENERATOR
+// 13. UNIQUE SLUG
 // ============================================================
 
 async function uniqueSlug(title, ignoreId = 0) {
-  const { slugify } = require('./helpers');
+  const base = String(
+    slugify(String(title || ''))
+  ).slice(0, 230) || 'berita';
 
-  const base = slugify(title);
+  const ignoredId = Number(ignoreId) || 0;
 
   let slug = base;
   let counter = 2;
 
-  for (;;) {
-    const exists = mode === 'json'
-      ? state.berita.some(item =>
-          item.slug === slug &&
-          Number(item.id) !== Number(ignoreId)
-        )
-      : (
-          await rows(
-            `SELECT id
-             FROM berita
-             WHERE slug = ? AND id != ?
-             LIMIT 1`,
-            [slug, Number(ignoreId)]
-          )
-        ).length > 0;
+  while (true) {
+    let exists = false;
+
+    if (mode === 'json') {
+      exists = state.berita.some(item =>
+        item.slug === slug &&
+        Number(item.id) !== ignoredId
+      );
+    } else {
+      const result = await rows(
+        `SELECT id
+         FROM berita
+         WHERE slug = ?
+           AND id <> ?
+         LIMIT 1`,
+        [slug, ignoredId]
+      );
+
+      exists = result.length > 0;
+    }
 
     if (!exists) {
       return slug;
@@ -451,148 +654,227 @@ async function uniqueSlug(title, ignoreId = 0) {
 }
 
 // ============================================================
-// CREATE NEWS
+// 14. CREATE NEWS
 // ============================================================
 
 async function createNews(data) {
-  const slug = await uniqueSlug(data.judul);
-
-  if (mode === 'json') {
-    const id = state.berita.reduce(
-      (max, item) => Math.max(max, Number(item.id) || 0),
-      0
-    ) + 1;
-
-    const now = new Date().toISOString();
-
-    state.berita.push({
-      ...data,
-      id,
-      slug,
-      created_at: now,
-      updated_at: now
-    });
-
-    save();
-
-    return id;
+  if (!validObject(data)) {
+    throw new Error('Data berita tidak valid.');
   }
 
-  const [result] = await pool.execute(
-    `INSERT INTO berita
-      (judul, slug, isi, gambar, kategori, tanggal, penulis, sumber)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      data.judul,
-      slug,
-      data.isi,
-      data.gambar || null,
-      data.kategori,
-      data.tanggal,
-      data.penulis,
-      data.sumber
-    ]
-  );
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const slug = await uniqueSlug(data.judul);
 
-  return result.insertId;
+    if (mode === 'json') {
+      const id = state.berita.reduce(
+        (max, item) =>
+          Math.max(max, Number(item.id) || 0),
+        0
+      ) + 1;
+
+      const now = new Date().toISOString();
+
+      const record = {
+        ...data,
+        id,
+        slug,
+        created_at: now,
+        updated_at: now
+      };
+
+      state.berita.push(record);
+
+      try {
+        save();
+      } catch (error) {
+        state.berita.pop();
+        throw error;
+      }
+
+      return id;
+    }
+
+    try {
+      const [result] = await pool.execute(
+        `INSERT INTO berita
+          (
+            judul,
+            slug,
+            isi,
+            gambar,
+            kategori,
+            tanggal,
+            penulis,
+            sumber
+          )
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          data.judul,
+          slug,
+          data.isi,
+          data.gambar || null,
+          data.kategori,
+          data.tanggal,
+          data.penulis || '',
+          data.sumber || ''
+        ]
+      );
+
+      return result.insertId;
+
+    } catch (error) {
+      if (
+        error.code === 'ER_DUP_ENTRY' &&
+        attempt < 4
+      ) {
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error(
+    'Gagal membuat slug berita yang unik.'
+  );
 }
 
 // ============================================================
-// UPDATE NEWS
+// 15. UPDATE NEWS
 // ============================================================
 
 async function updateNews(id, data) {
-  const numericId = Number(id);
+  const numericId = validId(id);
 
-  if (!Number.isFinite(numericId)) {
+  if (!numericId || !validObject(data)) {
     return false;
   }
-
-  const slug = await uniqueSlug(data.judul, numericId);
 
   if (mode === 'json') {
     const item = state.berita.find(
       row => Number(row.id) === numericId
     );
 
-    if (!item) {
-      return false;
-    }
+    if (!item) return false;
+
+    const previous = { ...item };
+
+    const slug = await uniqueSlug(
+      data.judul,
+      numericId
+    );
 
     Object.assign(item, data, {
       slug,
       updated_at: new Date().toISOString()
     });
 
-    save();
+    try {
+      save();
+    } catch (error) {
+      Object.assign(item, previous);
+      throw error;
+    }
 
     return true;
   }
 
-  await rows(
-    `UPDATE berita SET
-      judul = ?,
-      slug = ?,
-      isi = ?,
-      gambar = ?,
-      kategori = ?,
-      tanggal = ?,
-      penulis = ?,
-      sumber = ?
-     WHERE id = ?`,
-    [
-      data.judul,
-      slug,
-      data.isi,
-      data.gambar || null,
-      data.kategori,
-      data.tanggal,
-      data.penulis,
-      data.sumber,
-      numericId
-    ]
-  );
+  const existing = await getById(numericId);
 
-  return true;
+  if (!existing) return false;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const slug = await uniqueSlug(
+      data.judul,
+      numericId
+    );
+
+    try {
+      await rows(
+        `UPDATE berita SET
+          judul = ?,
+          slug = ?,
+          isi = ?,
+          gambar = ?,
+          kategori = ?,
+          tanggal = ?,
+          penulis = ?,
+          sumber = ?
+         WHERE id = ?`,
+        [
+          data.judul,
+          slug,
+          data.isi,
+          data.gambar || null,
+          data.kategori,
+          data.tanggal,
+          data.penulis || '',
+          data.sumber || '',
+          numericId
+        ]
+      );
+
+      return true;
+
+    } catch (error) {
+      if (
+        error.code === 'ER_DUP_ENTRY' &&
+        attempt < 4
+      ) {
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error(
+    'Gagal memperbarui slug berita.'
+  );
 }
 
 // ============================================================
-// DELETE NEWS
+// 16. DELETE NEWS
 // ============================================================
 
 async function deleteNews(id) {
-  const numericId = Number(id);
+  const numericId = validId(id);
 
-  if (!Number.isFinite(numericId)) {
-    return false;
-  }
+  if (!numericId) return false;
 
   if (mode === 'json') {
-    const previousLength = state.berita.length;
+    const previous = state.berita;
 
-    state.berita = state.berita.filter(
+    const filtered = previous.filter(
       item => Number(item.id) !== numericId
     );
 
-    if (previousLength === state.berita.length) {
+    if (filtered.length === previous.length) {
       return false;
     }
 
-    save();
+    state.berita = filtered;
+
+    try {
+      save();
+    } catch (error) {
+      state.berita = previous;
+      throw error;
+    }
 
     return true;
   }
 
-  await rows(
+  const result = await rows(
     'DELETE FROM berita WHERE id = ?',
     [numericId]
   );
 
-  return true;
+  return result.affectedRows > 0;
 }
 
 // ============================================================
-// CATEGORIES AND YEARS
+// 17. CATEGORIES
 // ============================================================
 
 async function categories() {
@@ -617,13 +899,19 @@ async function categories() {
   return result.map(item => item.kategori);
 }
 
+// ============================================================
+// 18. YEARS
+// ============================================================
+
 async function years() {
   if (mode === 'json') {
     return [
       ...new Set(
         state.berita
-          .map(item => Number(String(item.tanggal).slice(0, 4)))
-          .filter(Boolean)
+          .map(item =>
+            Number(String(item.tanggal).slice(0, 4))
+          )
+          .filter(validYear)
       )
     ].sort((a, b) => b - a);
   }
@@ -631,14 +919,17 @@ async function years() {
   const result = await rows(
     `SELECT DISTINCT YEAR(tanggal) AS y
      FROM berita
+     WHERE tanggal IS NOT NULL
      ORDER BY y DESC`
   );
 
-  return result.map(item => Number(item.y));
+  return result
+    .map(item => Number(item.y))
+    .filter(validYear);
 }
 
 // ============================================================
-// STATISTICS
+// 19. STATISTICS
 // ============================================================
 
 async function stats() {
@@ -648,7 +939,9 @@ async function stats() {
     const latest = all
       .slice()
       .sort((a, b) =>
-        String(b.updated_at).localeCompare(String(a.updated_at))
+        String(b.updated_at || '').localeCompare(
+          String(a.updated_at || '')
+        )
       )[0];
 
     return {
@@ -658,7 +951,9 @@ async function stats() {
         all.map(item => item.kategori).filter(Boolean)
       ).size,
 
-      totalGambar: all.filter(item => item.gambar).length,
+      totalGambar: all.filter(
+        item => item.gambar
+      ).length,
 
       latest: latest?.updated_at || null
     };
@@ -673,53 +968,92 @@ async function stats() {
      FROM berita`
   );
 
-  return result[0];
+  const data = result[0] || {};
+
+  return {
+    totalBerita: Number(data.totalBerita || 0),
+    totalKategori: Number(data.totalKategori || 0),
+    totalGambar: Number(data.totalGambar || 0),
+    latest: data.latest || null
+  };
 }
 
 // ============================================================
-// NEWS ACTIVITY (LAST 7 DAYS)
+// 20. NEWS ACTIVITY - LAST 7 DAYS
 // ============================================================
 
 async function activity() {
-  const last = [];
+  const today = getLocalDate();
+  const startDate = shiftDate(today, -6);
+  const endDate = shiftDate(today, 1);
 
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date();
+  const result = [];
 
-    date.setUTCHours(12, 0, 0, 0);
-    date.setUTCDate(date.getUTCDate() - i);
-
-    last.push({
-      date: date.toISOString().slice(0, 10),
+  for (let i = 0; i < 7; i++) {
+    result.push({
+      date: shiftDate(startDate, i),
       count: 0
     });
   }
 
-  const values = mode === 'json'
-    ? state.berita.map(item => ({
-        date: String(item.tanggal).slice(0, 10)
-      }))
-    : await rows(
-        `SELECT DATE_FORMAT(tanggal, '%Y-%m-%d') AS date
-         FROM berita
-         WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)`
-      );
+  let values = [];
 
-  for (const value of values) {
-    const item = last.find(
-      row => row.date === value.date
+  if (mode === 'json') {
+    const counts = new Map();
+
+    for (const item of state.berita) {
+      const date = String(
+        item.tanggal || ''
+      ).slice(0, 10);
+
+      if (
+        date >= startDate &&
+        date < endDate
+      ) {
+        counts.set(
+          date,
+          (counts.get(date) || 0) + 1
+        );
+      }
+    }
+
+    values = Array.from(
+      counts,
+      ([date, count]) => ({ date, count })
     );
 
-    if (item) {
-      item.count++;
-    }
+  } else {
+    values = await rows(
+      `SELECT
+        DATE_FORMAT(tanggal, '%Y-%m-%d') AS date,
+        COUNT(*) AS count
+       FROM berita
+       WHERE tanggal >= ?
+         AND tanggal < ?
+       GROUP BY DATE(tanggal)`,
+      [
+        startDate,
+        endDate
+      ]
+    );
   }
 
-  return last;
+  const countMap = new Map(
+    values.map(item => [
+      String(item.date),
+      Number(item.count) || 0
+    ])
+  );
+
+  for (const item of result) {
+    item.count = countMap.get(item.date) || 0;
+  }
+
+  return result;
 }
 
 // ============================================================
-// SETTINGS
+// 21. GET SETTINGS
 // ============================================================
 
 async function getSettings() {
@@ -734,118 +1068,320 @@ async function getSettings() {
     'SELECT kunci, nilai FROM pengaturan'
   );
 
+  const settings = Object.fromEntries(
+    result.map(item => [
+      item.kunci,
+      item.nilai
+    ])
+  );
+
   return {
     ...defaultSettings,
-    ...Object.fromEntries(
-      result.map(item => [item.kunci, item.nilai])
-    )
+    ...settings
   };
 }
 
+// ============================================================
+// 22. SAVE SETTINGS
+// ============================================================
+
 async function saveSettings(fields) {
+  if (!validObject(fields)) {
+    throw new Error('Pengaturan tidak valid.');
+  }
+
+  const entries = Object.entries(fields)
+    .filter(([key]) =>
+      typeof key === 'string' &&
+      key.trim().length > 0 &&
+      key.length <= 100
+    )
+    .map(([key, value]) => [
+      key.trim(),
+      value == null ? '' : String(value)
+    ]);
+
+  if (!entries.length) return;
+
   if (mode === 'json') {
+    const previous = { ...state.pengaturan };
+
     state.pengaturan = {
       ...state.pengaturan,
-      ...fields
+      ...Object.fromEntries(entries)
     };
 
-    save();
+    try {
+      save();
+    } catch (error) {
+      state.pengaturan = previous;
+      throw error;
+    }
+
     return;
   }
 
-  for (const [key, value] of Object.entries(fields)) {
-    await rows(
-      `INSERT INTO pengaturan (kunci, nilai)
-       VALUES (?, ?)
-       ON DUPLICATE KEY UPDATE nilai = VALUES(nilai)`,
-      [key, value]
-    );
-  }
+  const placeholders = entries
+    .map(() => '(?, ?)')
+    .join(', ');
+
+  const params = entries.flat();
+
+  await rows(
+    `INSERT INTO pengaturan (kunci, nilai)
+     VALUES ${placeholders}
+     ON DUPLICATE KEY UPDATE
+       nilai = VALUES(nilai)`,
+    params
+  );
 }
 
 // ============================================================
-// USERS
+// 23. GET USER - ADMIN LOGIN
 // ============================================================
 
 async function getUser(username) {
+  const name = String(
+    username || ''
+  ).trim();
+
+  if (!name || name.length > 100) {
+    return null;
+  }
+
   if (mode === 'json') {
-    return state.users.find(
-      user => user.username === username
-    ) || null;
+    const user = state.users.find(
+      item => item.username === name
+    );
+
+    if (!user) return null;
+
+    return {
+      id: user.id,
+      username: user.username,
+      password: user.password
+    };
   }
 
   const result = await rows(
-    `SELECT id, username, password
+    `SELECT
+      id,
+      username,
+      password
      FROM users
      WHERE username = ?
      LIMIT 1`,
-    [username]
+    [name]
   );
 
-  return result[0] || null;
+  if (!result.length) return null;
+
+  const user = result[0];
+
+  return {
+    id: Number(user.id),
+    username: user.username,
+    password: user.password
+  };
 }
 
+// ============================================================
+// 24. CREATE USER
+// ============================================================
+
 async function createUser(username, hash) {
+  const name = String(
+    username || ''
+  ).trim();
+
+  const passwordHash = String(
+    hash || ''
+  ).trim();
+
+  if (
+    !name ||
+    name.length > 100 ||
+    !passwordHash
+  ) {
+    throw new Error('Data pengguna tidak valid.');
+  }
+
   if (mode === 'json') {
-    if (
-      state.users.some(user => user.username === username)
-    ) {
-      throw new Error('Username sudah digunakan');
+    const exists = state.users.some(
+      user => user.username === name
+    );
+
+    if (exists) {
+      throw new Error('Username sudah digunakan.');
     }
 
     const id = state.users.reduce(
-      (max, user) => Math.max(max, Number(user.id) || 0),
+      (max, user) =>
+        Math.max(max, Number(user.id) || 0),
       0
     ) + 1;
 
     state.users.push({
       id,
-      username,
-      password: hash
+      username: name,
+      password: passwordHash
     });
 
-    save();
+    try {
+      save();
+    } catch (error) {
+      state.users.pop();
+      throw error;
+    }
 
     return id;
   }
 
-  const [result] = await pool.execute(
-    `INSERT INTO users (username, password)
-     VALUES (?, ?)`,
-    [username, hash]
-  );
+  try {
+    const [result] = await pool.execute(
+      `INSERT INTO users
+        (username, password)
+       VALUES (?, ?)`,
+      [
+        name,
+        passwordHash
+      ]
+    );
 
-  return result.insertId;
+    return result.insertId;
+
+  } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      throw new Error('Username sudah digunakan.');
+    }
+
+    throw error;
+  }
 }
 
 // ============================================================
-// EXPORTS
+// 25. UPDATE USER PASSWORD
+// ============================================================
+
+async function updateUserPassword(id, hash) {
+  const numericId = validId(id);
+  const passwordHash = String(hash || '').trim();
+
+  if (!numericId || !passwordHash) {
+    return false;
+  }
+
+  if (mode === 'json') {
+    const user = state.users.find(
+      item => Number(item.id) === numericId
+    );
+
+    if (!user) return false;
+
+    const previous = user.password;
+
+    user.password = passwordHash;
+
+    try {
+      save();
+    } catch (error) {
+      user.password = previous;
+      throw error;
+    }
+
+    return true;
+  }
+
+  const result = await rows(
+    `UPDATE users
+     SET password = ?
+     WHERE id = ?`,
+    [
+      passwordHash,
+      numericId
+    ]
+  );
+
+  if (result.affectedRows > 0) {
+    return true;
+  }
+
+  // affectedRows dapat 0 jika hash yang disimpan sama.
+  const existing = await getByUserId(numericId);
+
+  return Boolean(existing);
+}
+
+async function getByUserId(id) {
+  const numericId = validId(id);
+
+  if (!numericId) return null;
+
+  if (mode === 'json') {
+    return state.users.find(
+      item => Number(item.id) === numericId
+    ) || null;
+  }
+
+  const result = await rows(
+    `SELECT id, username
+     FROM users
+     WHERE id = ?
+     LIMIT 1`,
+    [numericId]
+  );
+
+  return result[0] || null;
+}
+
+// ============================================================
+// 26. DATABASE SHUTDOWN
+// ============================================================
+
+async function closePool() {
+  if (!pool) return;
+
+  await pool.end();
+  pool = null;
+}
+
+// ============================================================
+// 27. EXPORTS
 // ============================================================
 
 module.exports = {
+  // Configuration
   mode,
-  testConnection,
 
+  // Database
+  testConnection,
+  closePool,
+
+  // News
   listNews,
   latestNews,
-
   getById,
   getBySlug,
   uniqueSlug,
-
   createNews,
   updateNews,
   deleteNews,
 
+  // Categories
   categories,
   years,
 
+  // Dashboard
   stats,
   activity,
 
+  // Settings
   getSettings,
   saveSettings,
 
+  // Users and authentication
   getUser,
-  createUser
+  getByUserId,
+  createUser,
+  updateUserPassword
 };
