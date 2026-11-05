@@ -1560,120 +1560,136 @@ adminRouter.post(
   loginLimit,
 
   asyncRoute(async (req, res) => {
-    const username = cleanText(req.body?.username, 100);
+    const username = cleanText(
+      req.body?.username,
+      100
+    );
 
     const password =
       typeof req.body?.password === 'string'
         ? req.body.password
         : '';
 
-    if (!username || !password || password.length > 1024) {
+    // Validasi input
+    if (
+      !username ||
+      !password ||
+      password.length > 1024
+    ) {
       loginFailed(req);
 
-      return renderAdmin(res.status(401), 'login', {
-        error: 'Username atau password tidak sesuai.'
-      });
+      return renderAdmin(
+        res.status(401),
+        'login',
+        {
+          error: 'Username atau password tidak sesuai.'
+        }
+      );
     }
 
+    // Ambil akun administrator
     const user = await store.getUser(username);
+
+    // Ambil hash password dari database
+    const storedHash = String(
+      user?.password ||
+      user?.password_hash ||
+      ''
+    ).trim();
+
+    // Normalisasi format bcrypt
+    const hash = storedHash.replace(
+      /^\$2y\$/,
+      '$2a$'
+    );
+
+    const validHash =
+      /^\$2[ab]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(hash);
+
     let valid = false;
 
-    if (user) {
-      valid = await verifyAdminPassword(password, user);
-    } else {
+    // Verifikasi password
+    if (user && validHash) {
       try {
-        await bcrypt.compare(password, DUMMY_HASH);
+        valid = await bcrypt.compare(
+          password,
+          hash
+        );
+      } catch (error) {
+        console.error(
+          '[ADMIN BCRYPT ERROR]',
+          error.message
+        );
+      }
+    } else {
+      // Dummy comparison untuk mengurangi perbedaan waktu respons
+      try {
+        await bcrypt.compare(
+          password,
+          DUMMY_HASH
+        );
       } catch {
-        // Pesan kesalahan tetap dibuat umum.
+        // Abaikan kegagalan dummy comparison.
       }
     }
 
-    if (!user || !valid) {
+    // Periksa status akun
+    const inactive = user && (
+      user.is_active === false ||
+      user.is_active === 0 ||
+      user.is_active === '0'
+    );
+
+    // Tolak autentikasi jika tidak valid
+    if (!user || !valid || inactive) {
       loginFailed(req);
 
-      return renderAdmin(res.status(401), 'login', {
-        error: 'Username atau password tidak sesuai.'
-      });
+      return renderAdmin(
+        res.status(401),
+        'login',
+        {
+          error: 'Username atau password tidak sesuai.'
+        }
+      );
     }
 
+    // Bersihkan penghitung kegagalan
     failures.delete(req.rateKey);
     ipFailures.delete(req.rateIP);
 
-    // Regenerasi session untuk mencegah session fixation.
+    // Regenerasi session
     await new Promise((resolve, reject) => {
       req.session.regenerate(error => {
-        if (error) reject(error);
-        else resolve();
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
       });
     });
 
+    // Simpan identitas administrator
     req.session.adminId = user.id;
     req.session.username = user.username;
-    req.session.csrf = crypto.randomBytes(32).toString('hex');
 
-    // Simpan session sebelum redirect.
+    req.session.csrf = crypto
+      .randomBytes(32)
+      .toString('hex');
+
+    // Simpan session sebelum redirect
     await new Promise((resolve, reject) => {
       req.session.save(error => {
-        if (error) reject(error);
-        else resolve();
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
       });
     });
 
     return res.redirect(303, ADMIN);
   })
 );
-
-// =========================================================
-// LOGOUT
-// =========================================================
-
-adminRouter.post(
-  '/logout',
-  requireAdmin,
-  verifyCsrf,
-
-  (req, res, next) => {
-    req.session.destroy(error => {
-      if (error) return next(error);
-
-      res.clearCookie(
-        'mediacenter.admin.sid',
-        { path: ADMIN }
-      );
-
-      return res.redirect(303, ADMIN + '/login');
-    });
-  }
-);
-
-adminRouter.get('/logout', (req, res) => {
-  res.redirect(302, ADMIN);
-});
-
-// =========================================================
-// REDIRECT URL ADMIN LAMA
-// =========================================================
-
-const oldAdminPages = {
-  '/index.php': ADMIN,
-  '/login.php': ADMIN + '/login',
-  '/berita.php': ADMIN + '/berita',
-  '/tambah-berita.php': ADMIN + '/berita/tambah',
-  '/edit-berita.php': ADMIN + '/berita/edit'
-};
-
-for (const [previous, target] of Object.entries(oldAdminPages)) {
-  adminRouter.get(previous, (req, res) => {
-    const question = req.originalUrl.indexOf('?');
-
-    const query = question < 0
-      ? ''
-      : req.originalUrl.slice(question);
-
-    res.redirect(302, target + query);
-  });
-}
-
 // =========================================================
 // PROTEKSI SELURUH HALAMAN ADMIN
 // =========================================================
