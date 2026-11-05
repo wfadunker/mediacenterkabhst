@@ -372,12 +372,12 @@ adminRouter.use(
     rolling: true,
 
     cookie: {
-      path: ADMIN,
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: PROD,
-      maxAge: 8 * 60 * 60 * 1000
-    }
+  path: ADMIN,
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: PROD,
+  maxAge: 8 * 60 * 60 * 1000
+}
   })
 );
 
