@@ -557,12 +557,26 @@ async function latestNews(limit = 7) {
 // 11. GET NEWS BY ID
 // ============================================================
 
-async function getById(id) {
-  const numericId = validId(id);
-
-  if (!numericId) {
-    return null;
+async function rows(sql, params = []) {
+  if (!pool) {
+    throw new Error('Koneksi MySQL belum tersedia.');
   }
+
+  try {
+    const [result] = await pool.execute(sql, params);
+    return result;
+
+  } catch (error) {
+    console.error('[SQL FAILED]', {
+      code: error.code,
+      message: error.message,
+      sql: String(sql).replace(/\s+/g, ' ').trim(),
+      parameterCount: params.length
+    });
+
+    throw error;
+  }
+
 
   if (mode === 'json') {
     return state.berita.find(
