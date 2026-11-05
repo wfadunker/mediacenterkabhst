@@ -1525,7 +1525,6 @@ app.use((req, res, next) => {
 
 adminRouter.get(
   '/login',
-
   asyncRoute(async (req, res) => {
     if (req.session.adminId) {
       return res.redirect(302, ADMIN);
@@ -1537,8 +1536,8 @@ adminRouter.get(
 
     await new Promise((resolve, reject) => {
       req.session.save(error => {
-        if (error) reject(error);
-        else resolve();
+        if (error) return reject(error);
+        resolve();
       });
     });
 
@@ -1547,6 +1546,101 @@ adminRouter.get(
     return renderAdmin(res, 'login', {
       error: ''
     });
+  })
+);
+
+adminRouter.post(
+  '/login',
+  verifyCsrf,
+  loginLimit,
+
+  asyncRoute(async (req, res) => {
+    const username = cleanText(
+      req.body?.username,
+      100
+    );
+
+    const password =
+      typeof req.body?.password === 'string'
+        ? req.body.password
+        : '';
+
+    // Validasi input
+    if (
+      !username ||
+      !password ||
+      password.length > 1024
+    ) {
+      loginFailed(req);
+
+      return renderAdmin(
+        res.status(401),
+        'login',
+        {
+          error: 'Username atau password tidak sesuai.'
+        }
+      );
+    }
+
+    // Cari administrator
+    const user = await store.getUser(username);
+
+    let valid = false;
+
+    if (user) {
+      valid = await verifyAdminPassword(
+        password,
+        user
+      );
+    } else {
+      // Dummy comparison untuk mengurangi perbedaan waktu respons
+      await bcrypt.compare(password, DUMMY_HASH);
+    }
+
+    // Validasi kredensial
+    if (
+      !user ||
+      !valid ||
+      user.is_active === false ||
+      user.is_active === 0
+    ) {
+      loginFailed(req);
+
+      return renderAdmin(
+        res.status(401),
+        'login',
+        {
+          error: 'Username atau password tidak sesuai.'
+        }
+      );
+    }
+
+    // Bersihkan percobaan login setelah berhasil
+    failures.delete(req.rateKey);
+    ipFailures.delete(req.rateIP);
+
+    // Regenerasi session untuk mencegah session fixation
+    await new Promise((resolve, reject) => {
+      req.session.regenerate(error => {
+        if (error) return reject(error);
+        resolve();
+      });
+    });
+
+    req.session.adminId = user.id;
+    req.session.username = user.username;
+
+    req.session.csrf = crypto.randomBytes(32).toString('hex');
+
+    // Simpan session sebelum redirect
+    await new Promise((resolve, reject) => {
+      req.session.save(error => {
+        if (error) return reject(error);
+        resolve();
+      });
+    });
+
+    return res.redirect(303, ADMIN);
   })
 );
 
@@ -1690,6 +1784,58 @@ adminRouter.post(
     return res.redirect(303, ADMIN);
   })
 );
+
+// =========================================================
+// VERIFIKASI PASSWORD ADMIN
+// Mendukung SHA-512 lama dan bcrypt
+// =========================================================
+
+function timingSafeHexEqual(left, right) {
+  if (
+    !/^[a-f0-9]{128}$/i.test(String(left || '')) ||
+    !/^[a-f0-9]{128}$/i.test(String(right || ''))
+  ) {
+    return false;
+  }
+
+  const a = Buffer.from(String(left), 'hex');
+  const b = Buffer.from(String(right), 'hex');
+
+  return crypto.timingSafeEqual(a, b);
+}
+
+async function verifyAdminPassword(password, user) {
+  const storedHash = String(
+    user?.password || user?.password_hash || ''
+  ).trim();
+
+  // Password bcrypt
+  if (/^\$2[aby]\$\d{2}\$/.test(storedHash)) {
+    try {
+      return await bcrypt.compare(
+        password,
+        storedHash.replace(/^\$2y\$/, '$2a$')
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  // Password SHA-512 dari database lama
+  if (/^[a-f0-9]{128}$/i.test(storedHash)) {
+    const candidate = crypto
+      .createHash('sha512')
+      .update(password, 'utf8')
+      .digest('hex');
+
+    return timingSafeHexEqual(
+      candidate,
+      storedHash.toLowerCase()
+    );
+  }
+
+  return false;
+}
 // =========================================================
 // PROTEKSI SELURUH HALAMAN ADMIN
 // =========================================================
