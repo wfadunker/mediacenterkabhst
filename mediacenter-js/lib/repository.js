@@ -1,66 +1,105 @@
-
 'use strict';
 
-// ======================================================
-// 1. DEPENDENCIES
-// ======================================================
+// ============================================================
+// DEPENDENCIES
+// ============================================================
 
 try {
   require('dotenv').config();
 } catch (error) {
-  if (error.code !== 'MODULE_NOT_FOUND') {
-    throw error;
-  }
+  if (error.code !== 'MODULE_NOT_FOUND') throw error;
 }
 
 const fs = require('node:fs');
 const path = require('node:path');
 const mysql = require('mysql2/promise');
-
 const { defaultSettings } = require('./helpers');
 
-// ======================================================
-// 2. CONFIGURATION
-// ======================================================
+// ============================================================
+// CONFIGURATION
+// ============================================================
 
 const isVercel = process.env.VERCEL === '1';
+const mode = String(process.env.DB_MODE || (isVercel ? 'mysql' : 'json'))
+  .trim()
+  .toLowerCase();
 
-const mode = (
-  process.env.DB_MODE || 'json'
-).trim().toLowerCase();
-
-let pool = null;
-
-// Vercel tidak boleh menulis ke /var/task.
-// /tmp hanya penyimpanan sementara.
-const file = path.resolve(
-  isVercel
+const jsonFile = path.resolve(
+  process.env.JSON_DB_FILE ||
+  (isVercel
     ? '/tmp/mediacenter-hst/db.json'
-    : (
-        process.env.JSON_DB_FILE ||
-        path.join(__dirname, '../data/db.json')
-      )
+    : path.join(__dirname, '../data/db.json'))
 );
 
-const EMPTY_STATE = () => ({
+const emptyState = () => ({
   berita: [],
   users: [],
   pengaturan: {}
 });
 
-// ======================================================
-// 3. JSON STORAGE
-// ======================================================
+let pool = null;
+let state = null;
 
-function jsonLoad() {
-  if (!fs.existsSync(file)) {
-    return EMPTY_STATE();
+// ============================================================
+// HELPERS
+// ============================================================
+
+const normalize = value =>
+  String(value ?? '').toLocaleLowerCase('id-ID');
+
+function positiveInteger(value, fallback, maximum = 100) {
+  const number = Math.floor(Number(value));
+
+  if (!Number.isFinite(number) || number < 1) {
+    return fallback;
   }
 
-  const content = fs.readFileSync(file, 'utf8');
+  return Math.min(number, maximum);
+}
+
+function getSslConfig() {
+  const rawCa = process.env.DB_SSL_CA;
+  const ca = rawCa
+    ? rawCa.replace(/\\n/g, '\n').trim()
+    : '';
+
+  if (isVercel && !ca) {
+    throw new Error(
+      'DB_SSL_CA belum diatur. Masukkan isi sertifikat CA TiDB Cloud pada Environment Variables Vercel.'
+    );
+  }
+
+  if (ca) {
+    return {
+      ca,
+      minVersion: 'TLSv1.2',
+      rejectUnauthorized: true
+    };
+  }
+
+  if (process.env.DB_SSL === 'true') {
+    return {
+      minVersion: 'TLSv1.2',
+      rejectUnauthorized: true
+    };
+  }
+
+  return undefined;
+}
+
+// ============================================================
+// JSON STORAGE (LOCAL DEVELOPMENT)
+// ============================================================
+
+function jsonLoad() {
+  if (!fs.existsSync(jsonFile)) {
+    return emptyState();
+  }
+
+  const content = fs.readFileSync(jsonFile, 'utf8');
 
   if (!content.trim()) {
-    return EMPTY_STATE();
+    return emptyState();
   }
 
   const data = JSON.parse(content);
@@ -78,111 +117,110 @@ function jsonLoad() {
 }
 
 function save() {
-  const directory = path.dirname(file);
+  const directory = path.dirname(jsonFile);
+  const temporaryFile = `${jsonFile}.${process.pid}.tmp`;
 
-  fs.mkdirSync(directory, {
-    recursive: true
-  });
-
-  const tempFile = `${file}.${process.pid}.tmp`;
+  fs.mkdirSync(directory, { recursive: true });
 
   try {
     fs.writeFileSync(
-      tempFile,
+      temporaryFile,
       JSON.stringify(state, null, 2),
-      {
-        encoding: 'utf8',
-        mode: 0o600
-      }
+      'utf8'
     );
 
-    fs.renameSync(tempFile, file);
-
+    fs.renameSync(temporaryFile, jsonFile);
   } catch (error) {
     try {
-      if (fs.existsSync(tempFile)) {
-        fs.unlinkSync(tempFile);
+      if (fs.existsSync(temporaryFile)) {
+        fs.unlinkSync(temporaryFile);
       }
     } catch (_) {
-      // Abaikan error pembersihan file sementara.
+      // Ignore cleanup errors.
     }
 
     throw error;
   }
 }
 
-// JSON hanya diinisialisasi ketika mode JSON aktif.
+// ============================================================
+// DATABASE INITIALIZATION
+// ============================================================
+
 if (mode === 'json') {
-  fs.mkdirSync(path.dirname(file), {
-    recursive: true
-  });
-}
-
-let state = mode === 'json' ? jsonLoad() : null;
-
-// ======================================================
-// 4. MYSQL CONNECTION
-// ======================================================
-
-if (mode === 'mysql') {
-
-  // Jangan gunakan localhost untuk koneksi Vercel.
-  if (
-    isVercel &&
-    (
-      !process.env.DB_HOST ||
-      !process.env.DB_USER ||
-      !process.env.DB_NAME ||
-      !process.env.DB_PASSWORD
-    )
-  ) {
+  if (isVercel) {
     throw new Error(
-      'Konfigurasi MySQL Vercel belum lengkap. Periksa DB_HOST, DB_USER, DB_PASSWORD dan DB_NAME.'
+      'Vercel harus menggunakan DB_MODE=mysql. Penyimpanan JSON di Vercel tidak persisten.'
     );
   }
 
+  fs.mkdirSync(path.dirname(jsonFile), { recursive: true });
+  state = jsonLoad();
+
+} else if (mode === 'mysql') {
+
+  const required = [
+    'DB_HOST',
+    'DB_USER',
+    'DB_PASSWORD',
+    'DB_NAME'
+  ];
+
+  const missing = required.filter(
+    key => !String(process.env[key] || '').trim()
+  );
+
+  if (missing.length) {
+    throw new Error(
+      `Konfigurasi MySQL belum lengkap: ${missing.join(', ')}`
+    );
+  }
+
+  const port = Number(
+    process.env.DB_PORT || (isVercel ? 4000 : 3306)
+  );
+
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('DB_PORT tidak valid.');
+  }
+
   pool = mysql.createPool({
-    host: process.env.DB_HOST || '127.0.0.1',
+    host: process.env.DB_HOST.trim(),
+    port,
 
-    port: Number(process.env.DB_PORT || 3306),
-
-    user: process.env.DB_USER || 'root',
-
-    password: process.env.DB_PASSWORD || '',
-
-    database: process.env.DB_NAME || 'mediacenter_demo',
+    user: process.env.DB_USER.trim(),
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME.trim(),
 
     waitForConnections: true,
 
-    connectionLimit: isVercel ? 1 : 10,
+    connectionLimit: positiveInteger(
+      process.env.DB_CONNECTION_LIMIT,
+      isVercel ? 5 : 10,
+      20
+    ),
 
     queueLimit: 0,
 
+    connectTimeout: 15000,
+
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0,
+
     dateStrings: true,
-
     timezone: '+08:00',
-
     charset: 'utf8mb4',
 
-    ssl: process.env.DB_SSL === 'true'
-      ? {
-          minVersion: 'TLSv1.2',
-          rejectUnauthorized: true
-        }
-      : undefined
+    ssl: getSslConfig()
   });
 
-} else if (mode !== 'json') {
-
-  throw new Error(
-    'DB_MODE harus json atau mysql'
-  );
-
+} else {
+  throw new Error('DB_MODE harus bernilai json atau mysql.');
 }
 
-// ======================================================
-// 5. DATABASE HELPERS
-// ======================================================
+// ============================================================
+// QUERY HELPERS
+// ============================================================
 
 async function rows(sql, params = []) {
   if (!pool) {
@@ -194,31 +232,33 @@ async function rows(sql, params = []) {
   return result;
 }
 
-const normalize = value =>
-  String(value || '').toLocaleLowerCase('id-ID');
+async function testConnection() {
+  if (mode === 'json') {
+    return {
+      ok: true,
+      mode: 'json'
+    };
+  }
 
-function safeNumber(value, fallback = 0) {
-  const number = Number(value);
+  await rows('SELECT 1 AS connection_test');
 
-  return Number.isFinite(number)
-    ? number
-    : fallback;
+  return {
+    ok: true,
+    mode: 'mysql',
+    database: process.env.DB_NAME
+  };
 }
 
-// ======================================================
-// 6. NEWS FILTER
-// ======================================================
+// ============================================================
+// NEWS FILTER AND LIST
+// ============================================================
 
 function filterNews(items, filters = {}) {
-  let list = items.filter(item => {
+  const list = items.filter(item => {
 
     if (
       filters.q &&
-      ![
-        item.judul,
-        item.kategori,
-        item.penulis
-      ].some(value =>
+      ![item.judul, item.kategori, item.penulis].some(value =>
         normalize(value).includes(normalize(filters.q))
       )
     ) {
@@ -234,8 +274,7 @@ function filterNews(items, filters = {}) {
 
     if (
       filters.tahun &&
-      String(item.tanggal).slice(0, 4) !==
-        String(filters.tahun)
+      String(item.tanggal).slice(0, 4) !== String(filters.tahun)
     ) {
       return false;
     }
@@ -244,56 +283,32 @@ function filterNews(items, filters = {}) {
   });
 
   return list.sort((a, b) => {
-
     const order =
       String(a.tanggal).localeCompare(String(b.tanggal)) ||
-      safeNumber(a.id) - safeNumber(b.id);
+      Number(a.id || 0) - Number(b.id || 0);
 
-    return filters.urut === 'terlama'
-      ? order
-      : -order;
-
+    return filters.urut === 'terlama' ? order : -order;
   });
 }
 
-// ======================================================
-// 7. NEWS LIST
-// ======================================================
-
 async function listNews(filters = {}) {
-
-  const page = Math.max(
-    1,
-    Math.floor(safeNumber(filters.page, 1))
-  );
-
-  const limit = Math.min(
-    100,
-    Math.max(
-      1,
-      Math.floor(safeNumber(filters.limit, 9))
-    )
-  );
-
+  const page = positiveInteger(filters.page, 1, 1000000);
+  const limit = positiveInteger(filters.limit, 9, 100);
   const offset = (page - 1) * limit;
 
   if (mode === 'json') {
-
     const found = filterNews(state.berita, filters);
 
     return {
       rows: found.slice(offset, offset + limit),
       total: found.length
     };
-
   }
 
   let sql = ' FROM berita WHERE 1=1';
-
   const params = [];
 
   if (filters.q) {
-
     sql += `
       AND (
         judul LIKE ?
@@ -302,14 +317,9 @@ async function listNews(filters = {}) {
       )
     `;
 
-    const pattern = `%${filters.q}%`;
+    const pattern = `%${String(filters.q)}%`;
 
-    params.push(
-      pattern,
-      pattern,
-      pattern
-    );
-
+    params.push(pattern, pattern, pattern);
   }
 
   if (filters.kategori) {
@@ -323,19 +333,16 @@ async function listNews(filters = {}) {
   }
 
   const count = await rows(
-    'SELECT COUNT(*) AS total' + sql,
+    `SELECT COUNT(*) AS total ${sql}`,
     params
   );
 
-  const order = filters.urut === 'terlama'
-    ? 'ASC'
-    : 'DESC';
+  const order = filters.urut === 'terlama' ? 'ASC' : 'DESC';
 
   const found = await rows(
     `SELECT
       id, judul, slug, isi, gambar,
-      kategori, tanggal, penulis,
-      sumber, updated_at
+      kategori, tanggal, penulis, sumber, updated_at
      ${sql}
      ORDER BY tanggal ${order}, id ${order}
      LIMIT ${limit} OFFSET ${offset}`,
@@ -344,21 +351,16 @@ async function listNews(filters = {}) {
 
   return {
     rows: found,
-    total: Number(count[0].total)
+    total: Number(count[0]?.total || 0)
   };
-
 }
 
-// ======================================================
-// 8. LATEST NEWS
-// ======================================================
+// ============================================================
+// LATEST NEWS
+// ============================================================
 
 async function latestNews(limit = 7) {
-
-  const safeLimit = Math.min(
-    100,
-    Math.max(1, Math.floor(safeNumber(limit, 7)))
-  );
+  const safeLimit = positiveInteger(limit, 7, 100);
 
   if (mode === 'json') {
     return filterNews(state.berita).slice(0, safeLimit);
@@ -370,20 +372,22 @@ async function latestNews(limit = 7) {
      ORDER BY tanggal DESC, id DESC
      LIMIT ${safeLimit}`
   );
-
 }
 
-// ======================================================
-// 9. FIND NEWS
-// ======================================================
+// ============================================================
+// GET NEWS
+// ============================================================
 
 async function getById(id) {
-
   const numericId = Number(id);
+
+  if (!Number.isFinite(numericId)) {
+    return null;
+  }
 
   if (mode === 'json') {
     return state.berita.find(
-      item => item.id === numericId
+      item => Number(item.id) === numericId
     ) || null;
   }
 
@@ -393,11 +397,9 @@ async function getById(id) {
   );
 
   return result[0] || null;
-
 }
 
 async function getBySlug(slug) {
-
   if (mode === 'json') {
     return state.berita.find(
       item => item.slug === slug
@@ -410,15 +412,13 @@ async function getBySlug(slug) {
   );
 
   return result[0] || null;
-
 }
 
-// ======================================================
-// 10. UNIQUE SLUG
-// ======================================================
+// ============================================================
+// SLUG GENERATOR
+// ============================================================
 
 async function uniqueSlug(title, ignoreId = 0) {
-
   const { slugify } = require('./helpers');
 
   const base = slugify(title);
@@ -427,21 +427,18 @@ async function uniqueSlug(title, ignoreId = 0) {
   let counter = 2;
 
   for (;;) {
-
     const exists = mode === 'json'
-
       ? state.berita.some(item =>
           item.slug === slug &&
-          item.id !== Number(ignoreId)
+          Number(item.id) !== Number(ignoreId)
         )
-
       : (
           await rows(
             `SELECT id
              FROM berita
              WHERE slug = ? AND id != ?
              LIMIT 1`,
-            [slug, ignoreId]
+            [slug, Number(ignoreId)]
           )
         ).length > 0;
 
@@ -450,32 +447,28 @@ async function uniqueSlug(title, ignoreId = 0) {
     }
 
     slug = `${base}-${counter++}`;
-
   }
-
 }
 
-// ======================================================
-// 11. CREATE NEWS
-// ======================================================
+// ============================================================
+// CREATE NEWS
+// ============================================================
 
 async function createNews(data) {
-
   const slug = await uniqueSlug(data.judul);
 
   if (mode === 'json') {
-
     const id = state.berita.reduce(
-      (max, item) => Math.max(max, safeNumber(item.id)),
+      (max, item) => Math.max(max, Number(item.id) || 0),
       0
     ) + 1;
 
     const now = new Date().toISOString();
 
     state.berita.push({
+      ...data,
       id,
       slug,
-      ...data,
       created_at: now,
       updated_at: now
     });
@@ -483,13 +476,11 @@ async function createNews(data) {
     save();
 
     return id;
-
   }
 
   const [result] = await pool.execute(
     `INSERT INTO berita
-      (judul, slug, isi, gambar, kategori,
-       tanggal, penulis, sumber)
+      (judul, slug, isi, gambar, kategori, tanggal, penulis, sumber)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.judul,
@@ -504,21 +495,24 @@ async function createNews(data) {
   );
 
   return result.insertId;
-
 }
 
-// ======================================================
-// 12. UPDATE NEWS
-// ======================================================
+// ============================================================
+// UPDATE NEWS
+// ============================================================
 
 async function updateNews(id, data) {
+  const numericId = Number(id);
 
-  const slug = await uniqueSlug(data.judul, id);
+  if (!Number.isFinite(numericId)) {
+    return false;
+  }
+
+  const slug = await uniqueSlug(data.judul, numericId);
 
   if (mode === 'json') {
-
     const item = state.berita.find(
-      row => row.id === Number(id)
+      row => Number(row.id) === numericId
     );
 
     if (!item) {
@@ -533,7 +527,6 @@ async function updateNews(id, data) {
     save();
 
     return true;
-
   }
 
   await rows(
@@ -556,54 +549,54 @@ async function updateNews(id, data) {
       data.tanggal,
       data.penulis,
       data.sumber,
-      id
+      numericId
     ]
   );
 
   return true;
-
 }
 
-// ======================================================
-// 13. DELETE NEWS
-// ======================================================
+// ============================================================
+// DELETE NEWS
+// ============================================================
 
 async function deleteNews(id) {
+  const numericId = Number(id);
+
+  if (!Number.isFinite(numericId)) {
+    return false;
+  }
 
   if (mode === 'json') {
-
     const previousLength = state.berita.length;
 
     state.berita = state.berita.filter(
-      item => item.id !== Number(id)
+      item => Number(item.id) !== numericId
     );
 
-    if (previousLength !== state.berita.length) {
-      save();
-      return true;
+    if (previousLength === state.berita.length) {
+      return false;
     }
 
-    return false;
+    save();
 
+    return true;
   }
 
   await rows(
     'DELETE FROM berita WHERE id = ?',
-    [Number(id)]
+    [numericId]
   );
 
   return true;
-
 }
 
-// ======================================================
-// 14. CATEGORIES
-// ======================================================
+// ============================================================
+// CATEGORIES AND YEARS
+// ============================================================
 
 async function categories() {
-
   if (mode === 'json') {
-
     return [
       ...new Set(
         state.berita
@@ -611,7 +604,6 @@ async function categories() {
           .filter(Boolean)
       )
     ].sort();
-
   }
 
   const result = await rows(
@@ -623,27 +615,17 @@ async function categories() {
   );
 
   return result.map(item => item.kategori);
-
 }
 
-// ======================================================
-// 15. YEARS
-// ======================================================
-
 async function years() {
-
   if (mode === 'json') {
-
     return [
       ...new Set(
         state.berita
-          .map(item =>
-            Number(String(item.tanggal).slice(0, 4))
-          )
+          .map(item => Number(String(item.tanggal).slice(0, 4)))
           .filter(Boolean)
       )
     ].sort((a, b) => b - a);
-
   }
 
   const result = await rows(
@@ -653,25 +635,20 @@ async function years() {
   );
 
   return result.map(item => Number(item.y));
-
 }
 
-// ======================================================
-// 16. STATISTICS
-// ======================================================
+// ============================================================
+// STATISTICS
+// ============================================================
 
 async function stats() {
-
   if (mode === 'json') {
-
     const all = state.berita;
 
     const latest = all
       .slice()
       .sort((a, b) =>
-        String(b.updated_at).localeCompare(
-          String(a.updated_at)
-        )
+        String(b.updated_at).localeCompare(String(a.updated_at))
       )[0];
 
     return {
@@ -681,13 +658,10 @@ async function stats() {
         all.map(item => item.kategori).filter(Boolean)
       ).size,
 
-      totalGambar: all.filter(
-        item => item.gambar
-      ).length,
+      totalGambar: all.filter(item => item.gambar).length,
 
       latest: latest?.updated_at || null
     };
-
   }
 
   const result = await rows(
@@ -700,51 +674,38 @@ async function stats() {
   );
 
   return result[0];
-
 }
 
-// ======================================================
-// 17. ACTIVITY
-// ======================================================
+// ============================================================
+// NEWS ACTIVITY (LAST 7 DAYS)
+// ============================================================
 
 async function activity() {
-
   const last = [];
 
   for (let i = 6; i >= 0; i--) {
-
     const date = new Date();
 
     date.setUTCHours(12, 0, 0, 0);
-
-    date.setUTCDate(
-      date.getUTCDate() - i
-    );
+    date.setUTCDate(date.getUTCDate() - i);
 
     last.push({
       date: date.toISOString().slice(0, 10),
       count: 0
     });
-
   }
 
   const values = mode === 'json'
-
     ? state.berita.map(item => ({
         date: String(item.tanggal).slice(0, 10)
       }))
-
     : await rows(
         `SELECT DATE_FORMAT(tanggal, '%Y-%m-%d') AS date
          FROM berita
-         WHERE tanggal >= DATE_SUB(
-           CURDATE(),
-           INTERVAL 6 DAY
-         )`
+         WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)`
       );
 
   for (const value of values) {
-
     const item = last.find(
       row => row.date === value.date
     );
@@ -752,19 +713,16 @@ async function activity() {
     if (item) {
       item.count++;
     }
-
   }
 
   return last;
-
 }
 
-// ======================================================
-// 18. SETTINGS
-// ======================================================
+// ============================================================
+// SETTINGS
+// ============================================================
 
 async function getSettings() {
-
   if (mode === 'json') {
     return {
       ...defaultSettings,
@@ -779,56 +737,41 @@ async function getSettings() {
   return {
     ...defaultSettings,
     ...Object.fromEntries(
-      result.map(item => [
-        item.kunci,
-        item.nilai
-      ])
+      result.map(item => [item.kunci, item.nilai])
     )
   };
-
 }
 
 async function saveSettings(fields) {
-
   if (mode === 'json') {
-
     state.pengaturan = {
       ...state.pengaturan,
       ...fields
     };
 
     save();
-
     return;
-
   }
 
   for (const [key, value] of Object.entries(fields)) {
-
     await rows(
       `INSERT INTO pengaturan (kunci, nilai)
        VALUES (?, ?)
-       ON DUPLICATE KEY UPDATE
-       nilai = VALUES(nilai)`,
+       ON DUPLICATE KEY UPDATE nilai = VALUES(nilai)`,
       [key, value]
     );
-
   }
-
 }
 
-// ======================================================
-// 19. USERS
-// ======================================================
+// ============================================================
+// USERS
+// ============================================================
 
 async function getUser(username) {
-
   if (mode === 'json') {
-
     return state.users.find(
       user => user.username === username
     ) || null;
-
   }
 
   const result = await rows(
@@ -840,23 +783,18 @@ async function getUser(username) {
   );
 
   return result[0] || null;
-
 }
 
 async function createUser(username, hash) {
-
   if (mode === 'json') {
-
     if (
-      state.users.some(
-        user => user.username === username
-      )
+      state.users.some(user => user.username === username)
     ) {
       throw new Error('Username sudah digunakan');
     }
 
     const id = state.users.reduce(
-      (max, user) => Math.max(max, safeNumber(user.id)),
+      (max, user) => Math.max(max, Number(user.id) || 0),
       0
     ) + 1;
 
@@ -869,24 +807,24 @@ async function createUser(username, hash) {
     save();
 
     return id;
-
   }
 
   const [result] = await pool.execute(
-    'INSERT INTO users (username, password) VALUES (?, ?)',
+    `INSERT INTO users (username, password)
+     VALUES (?, ?)`,
     [username, hash]
   );
 
   return result.insertId;
-
 }
 
-// ======================================================
-// 20. EXPORT MODULE
-// ======================================================
+// ============================================================
+// EXPORTS
+// ============================================================
 
 module.exports = {
   mode,
+  testConnection,
 
   listNews,
   latestNews,
@@ -901,6 +839,7 @@ module.exports = {
 
   categories,
   years,
+
   stats,
   activity,
 
